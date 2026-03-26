@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrower.dart';
+import '../models/loan.dart';
 import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
 import '../services/user_service.dart';
 import '../widgets/loading_widget.dart';
+import 'add_loan_screen.dart';
 
 class LoanScreen extends StatefulWidget {
   const LoanScreen({Key? key}) : super(key: key);
@@ -14,241 +16,284 @@ class LoanScreen extends StatefulWidget {
 }
 
 class _LoanScreenState extends State<LoanScreen> {
-  Borrower? _selectedBorrower;
+  int _selectedTab = 0; // 0 = Active, 1 = Settled
+  String _searchText = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _resetFilters();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final userService = context.read<UserService>();
-      final borrowerService = context.read<BorrowerService>();
-      final loanService = context.read<LoanService>();
-      final userId = userService.currentUser?.userId;
-      if (userId != null) {
-        await borrowerService.loadBorrowers(userId);
-      }
-      await loanService.loadAllLoans();
+      await _loadData();
     });
   }
 
-  Future<void> _refreshLoans() async {
-    final loanService = context.read<LoanService>();
-    if (_selectedBorrower != null) {
-      await loanService.loadLoans(_selectedBorrower!.borrowerId!);
-    } else {
-      await loanService.loadAllLoans();
-    }
+  void _resetFilters() {
+    setState(() {
+      _searchText = '';
+      _selectedTab = 0; // Default to Active tab
+    });
   }
 
-  Future<void> _showLoanForm(BuildContext context) async {
-    if (_selectedBorrower == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a borrower first.')));
-      return;
+  Future<void> _loadData() async {
+    final userService = context.read<UserService>();
+    final borrowerService = context.read<BorrowerService>();
+    final loanService = context.read<LoanService>();
+    final userId = userService.currentUser?.userId;
+    if (userId != null) {
+      await borrowerService.loadBorrowers(userId);
     }
+    await loanService.loadAllLoans();
+  }
 
-    final formKey = GlobalKey<FormState>();
-    final loanAmountController = TextEditingController();
-    final payoutAmountController = TextEditingController();
-    final givenDateController = TextEditingController();
-    final dueDateController = TextEditingController();
-    final interestRateController = TextEditingController();
-    final fixedInterestController = TextEditingController();
-
-    bool hasInterest = false;
-    String interestType = 'flat';
-
-    DateTime? givenDate;
-    DateTime? dueDate;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (context, setStateInside) {
-          return AlertDialog(
-            title: const Text('Add Loan'),
-            content: SingleChildScrollView(
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(controller: loanAmountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Loan Amount'), validator: (v) => (v == null || double.tryParse(v) == null || double.parse(v) <= 0) ? 'Enter valid amount' : null),
-                    TextFormField(controller: payoutAmountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Payout Amount'), validator: (v) => (v == null || double.tryParse(v) == null || double.parse(v) <= 0) ? 'Enter valid amount' : null),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: givenDateController,
-                          readOnly: true,
-                          decoration: const InputDecoration(labelText: 'Given Date'),
-                          onTap: () async {
-                            final selected = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100));
-                            if (selected != null) {
-                              setStateInside(() {
-                                givenDate = selected;
-                                givenDateController.text = selected.toIso8601String().split('T').first;
-                              });
-                            }
-                          },
-                          validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextFormField(
-                          controller: dueDateController,
-                          readOnly: true,
-                          decoration: const InputDecoration(labelText: 'Due Date'),
-                          onTap: () async {
-                            final selected = await showDatePicker(context: context, initialDate: DateTime.now().add(const Duration(days: 30)), firstDate: DateTime(2000), lastDate: DateTime(2100));
-                            if (selected != null) {
-                              setStateInside(() {
-                                dueDate = selected;
-                                dueDateController.text = selected.toIso8601String().split('T').first;
-                              });
-                            }
-                          },
-                          validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      title: const Text('Has Interest'),
-                      value: hasInterest,
-                      onChanged: (value) => setStateInside(() => hasInterest = value),
-                    ),
-                    if (hasInterest) ...[
-                      DropdownButtonFormField<String>(
-                        value: interestType,
-                        items: const [DropdownMenuItem(value: 'flat', child: Text('Flat')), DropdownMenuItem(value: 'fixed', child: Text('Fixed'))],
-                        onChanged: (v) => setStateInside(() => interestType = v ?? 'flat'),
-                        decoration: const InputDecoration(labelText: 'Interest Type'),
-                      ),
-                      if (interestType == 'flat')
-                        TextFormField(controller: interestRateController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Interest Rate (%)'))
-                      else
-                        TextFormField(controller: fixedInterestController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fixed Interest Amount')),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  if (!formKey.currentState!.validate()) return;
-
-                  final userId = context.read<UserService>().currentUser?.userId;
-                  if (userId == null) return;
-
-                  final loanService = context.read<LoanService>();
-                  final navigator = Navigator.of(ctx);
-
-                  final double loanAmount = double.parse(loanAmountController.text);
-                  final double payoutAmount = double.parse(payoutAmountController.text);
-                  final double? interestRate = hasInterest && interestType == 'flat' ? double.tryParse(interestRateController.text) : null;
-                  final double? fixedInterest = hasInterest && interestType == 'fixed' ? double.tryParse(fixedInterestController.text) : null;
-
-                  if (dueDate == null || givenDate == null) return;
-                  if (dueDate!.isBefore(givenDate!)) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Due date must be after given date')));
-                    return;
-                  }
-
-                  final createdLoan = await loanService.createLoan(
-                        borrowerId: _selectedBorrower!.borrowerId!,
-                        loanAmount: loanAmount,
-                        payoutAmount: payoutAmount,
-                        givenDate: givenDate!,
-                        dueDate: dueDate!,
-                        hasInterest: hasInterest,
-                        interestType: interestType,
-                        interestRate: interestRate,
-                        interestIntervalDays: hasInterest && interestType == 'flat' ? 30 : null,
-                        fixedInterestAmount: fixedInterest,
-                        collectUpfront: false,
-                        notes: '',
-                      );
-
-                  await loanService.addLoanTransaction(userId: userId, borrowerId: _selectedBorrower!.borrowerId!, loanId: createdLoan.loanId!, amount: createdLoan.totalPayable);
-                  await _refreshLoans();
-
-                  navigator.pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        });
-      },
-    );
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final borrowerService = context.watch<BorrowerService>();
     final loanService = context.watch<LoanService>();
-
-    final loans = _selectedBorrower != null ? loanService.loans.where((loan) => loan.borrowerId == _selectedBorrower!.borrowerId).toList() : loanService.loans;
+    final borrowers = {for (var b in borrowerService.borrowers) b.borrowerId: b};
+    final loans = loanService.loans;
 
     if (borrowerService.isLoading || loanService.isLoading) {
       return const LoadingWidget(message: 'Loading loans...');
     }
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: [
-                DropdownButtonFormField<Borrower>(
-                  initialValue: _selectedBorrower,
-                  hint: const Text('Select Borrower'),
-                  items: borrowerService.borrowers
-                      .map((b) => DropdownMenuItem(value: b, child: Text('${b.firstName} ${b.lastName}')))
-                      .toList(),
-                  onChanged: (value) async {
+    // Filter by status
+    final filteredLoans = loans.where((loan) {
+      final isActive = loan.status == 'active';
+      final isSettled = loan.status == 'settled';
+      if (_selectedTab == 0 && !isActive) return false;
+      if (_selectedTab == 1 && !isSettled) return false;
+      if (_searchText.isNotEmpty) {
+        final borrower = borrowers[loan.borrowerId];
+        final name = borrower != null ? ('${borrower.firstName} ${borrower.lastName}').toLowerCase() : '';
+        return name.contains(_searchText.toLowerCase());
+      }
+      return true;
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7FBFC),
+      appBar: AppBar(
+        title: const Text('Loans', style: TextStyle(color: Colors.black)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        iconTheme: const IconThemeData(color: Color(0xFF0070A8)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Color(0xFF0070A8)),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddLoanScreen()),
+              );
+              await _loadData(); // Reload data after adding a loan
+              setState(() {}); // Refresh after add
+            },
+            tooltip: 'Add Loan',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Segmented control
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F1F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab('Active', 0),
+                    _buildTab('Settled', 1),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Search bar
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x11000000), blurRadius: 2, offset: Offset(0, 1)),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search, color: Color(0xFF0070A8)),
+                    hintText: 'Search Borrower',
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (value) {
                     setState(() {
-                      _selectedBorrower = value;
+                      _searchText = value;
                     });
-                    if (value != null) {
-                      final loanService = context.read<LoanService>();
-                      await loanService.loadLoans(value.borrowerId!);
-                    }
                   },
                 ),
-                Expanded(
-                  child: loans.isEmpty
-                      ? const Center(child: Text('No loans yet. Please add a loan.'))
-                      : ListView.builder(
-                          itemCount: loans.length,
-                          itemBuilder: (context, index) {
-                            final loan = loans[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text('Loan: \$${loan.loanAmount.toStringAsFixed(2)}'),
-                                subtitle: Text('Remaining: \$${loan.remainingBalance.toStringAsFixed(2)} | Status: ${loan.status}'),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+              ),
+              const SizedBox(height: 16),
+              // Loan list
+              Expanded(
+                child: filteredLoans.isEmpty
+                    ? const Center(child: Text('No loans found.'))
+                    : ListView.separated(
+                        itemCount: filteredLoans.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final loan = filteredLoans[index];
+                          final borrower = borrowers[loan.borrowerId];
+                          return _buildLoanCard(loan, borrower);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(String label, int index) {
+    final selected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTab = index;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? const Color(0xFF0070A8) : Colors.transparent,
+                width: 3,
+              ),
             ),
           ),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              onPressed: () => _showLoanForm(context),
-              child: const Icon(Icons.add),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? const Color(0xFF0070A8) : Colors.black54,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 16,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoanCard(Loan loan, Borrower? borrower) {
+    final name = borrower != null ? '${borrower.firstName} ${borrower.lastName}' : 'Unknown';
+    final initial = borrower != null && borrower.firstName.isNotEmpty ? borrower.firstName[0].toUpperCase() : 'A';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x11000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar Section
+              CircleAvatar(
+                backgroundColor: const Color(0xFF00273B),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Borrower Name Section
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              // Loan and Balance Section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Loan: ₱ ${loan.loanAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                  Text(
+                    'Balance: ₱ ${loan.remainingBalance.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Loan Terms Section
+          Text(
+            _buildInterestDetails(loan),
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
           ),
         ],
       ),
     );
+  }
+
+  String _buildInterestDetails(Loan loan) {
+    if (!loan.hasInterest) {
+      return 'Interest: None';
+    }
+
+    if (loan.interestType == 'flat') {
+      final rate = loan.interestRate ?? 0;
+      final interval = loan.interestInterval;
+      String intervalText = '';
+      if (interval == null || interval == 0) {
+        intervalText = 'one-time';
+      } else if (interval == 30) {
+        intervalText = 'monthly';
+      } else if (interval == 90) {
+        intervalText = 'quarterly';
+      } else if (interval == 365) {
+        intervalText = 'yearly';
+      } else {
+        intervalText = 'every $interval days';
+      }
+      return 'Interest: ${rate.toStringAsFixed(2)}% | Applied $intervalText';
+    } else {
+      final fixed = loan.fixedInterestAmount ?? 0;
+      return 'Interest: ₱${fixed.toStringAsFixed(2)}';
+    }
   }
 }

@@ -68,7 +68,7 @@ class DatabaseHelper {
         has_interest INTEGER NOT NULL,
         interest_type TEXT NOT NULL,
         interest_rate REAL,
-        interest_interval_days INTEGER,
+        interest_interval INTEGER, -- Updated column for interval types
         fixed_interest_amount REAL,
         collect_upfront INTEGER NOT NULL,
         total_interest REAL NOT NULL,

@@ -29,6 +29,10 @@ class LoanService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Loan?> getLoanById(int loanId) async {
+    return await _db.getLoanById(loanId);
+  }
+
   Future<Loan> createLoan({
     required int borrowerId,
     required double loanAmount,
@@ -38,7 +42,7 @@ class LoanService extends ChangeNotifier {
     required bool hasInterest,
     required String interestType,
     double? interestRate,
-    int? interestIntervalDays,
+    int? interestInterval,
     double? fixedInterestAmount,
     bool collectUpfront = false,
     String status = 'active',
@@ -53,8 +57,10 @@ class LoanService extends ChangeNotifier {
       hasInterest: hasInterest,
       interestType: interestType,
       interestRate: interestRate,
-      interestIntervalDays: interestIntervalDays,
+      interestInterval: interestInterval,
       fixedInterestAmount: fixedInterestAmount,
+      givenDate: givenDate,
+      dueDate: dueDate,
     );
 
     final totalPayable = Loan.calculateTotalPayable(payoutAmount: payoutAmount, totalInterest: totalInterest);
@@ -68,7 +74,7 @@ class LoanService extends ChangeNotifier {
       hasInterest: hasInterest,
       interestType: interestType,
       interestRate: interestType == 'flat' ? interestRate : null,
-      interestIntervalDays: interestType == 'flat' ? interestIntervalDays : null,
+      interestInterval: interestType == 'flat' ? interestInterval : null,
       fixedInterestAmount: interestType == 'fixed' ? fixedInterestAmount : null,
       collectUpfront: collectUpfront,
       totalInterest: totalInterest,
@@ -100,6 +106,12 @@ class LoanService extends ChangeNotifier {
     return await _db.createTransaction(transaction);
   }
 
+  Future<void> updateLoan(Loan loan) async {
+    if (loan.loanId == null) throw Exception('Loan ID is required for update');
+    await _db.updateLoan(loan);
+    await loadLoans(loan.borrowerId);
+  }
+
   Future<void> registerPayment({
     required Loan loan,
     required double amount,
@@ -123,7 +135,7 @@ class LoanService extends ChangeNotifier {
       hasInterest: loan.hasInterest,
       interestType: loan.interestType,
       interestRate: loan.interestRate,
-      interestIntervalDays: loan.interestIntervalDays,
+      interestInterval: loan.interestInterval,
       fixedInterestAmount: loan.fixedInterestAmount,
       collectUpfront: loan.collectUpfront,
       totalInterest: loan.totalInterest,

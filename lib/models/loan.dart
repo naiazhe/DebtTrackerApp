@@ -8,7 +8,7 @@ class Loan {
   final bool hasInterest;
   final String interestType;
   final double? interestRate;
-  final int? interestIntervalDays;
+  final int? interestInterval;
   final double? fixedInterestAmount;
   final bool collectUpfront;
   final double totalInterest;
@@ -30,7 +30,7 @@ class Loan {
     required this.hasInterest,
     required this.interestType,
     this.interestRate,
-    this.interestIntervalDays,
+    this.interestInterval,
     this.fixedInterestAmount,
     this.collectUpfront = false,
     required this.totalInterest,
@@ -48,13 +48,22 @@ class Loan {
     required bool hasInterest,
     required String interestType,
     double? interestRate,
-    int? interestIntervalDays,
+    int? interestInterval,
     double? fixedInterestAmount,
+    required DateTime givenDate,
+    required DateTime dueDate,
   }) {
     if (!hasInterest) return 0.0;
+
     if (interestType == 'flat') {
       final rate = interestRate ?? 0;
-      return loanAmount * (rate / 100);
+      if (interestInterval == null || interestInterval == 0) {
+        return loanAmount * (rate / 100); // One-Time
+      }
+
+      final totalDays = dueDate.difference(givenDate).inDays;
+      final intervals = (totalDays / interestInterval).ceil();
+      return loanAmount * (rate / 100) * intervals;
     } else {
       return fixedInterestAmount ?? 0;
     }
@@ -86,7 +95,7 @@ class Loan {
       'has_interest': hasInterest ? 1 : 0,
       'interest_type': interestType,
       'interest_rate': interestRate,
-      'interest_interval_days': interestIntervalDays,
+      'interest_interval': interestInterval,
       'fixed_interest_amount': fixedInterestAmount,
       'collect_upfront': collectUpfront ? 1 : 0,
       'total_interest': totalInterest,
@@ -111,7 +120,7 @@ class Loan {
       hasInterest: (map['has_interest'] as int) == 1,
       interestType: map['interest_type'] as String,
       interestRate: map['interest_rate'] != null ? (map['interest_rate'] as num).toDouble() : null,
-      interestIntervalDays: map['interest_interval_days'] as int?,
+      interestInterval: map['interest_interval'] as int?,
       fixedInterestAmount: map['fixed_interest_amount'] != null ? (map['fixed_interest_amount'] as num).toDouble() : null,
       collectUpfront: (map['collect_upfront'] as int) == 1,
       totalInterest: (map['total_interest'] as num).toDouble(),
@@ -135,7 +144,7 @@ class Loan {
     bool? hasInterest,
     String? interestType,
     double? interestRate,
-    int? interestIntervalDays,
+    int? interestInterval,
     double? fixedInterestAmount,
     bool? collectUpfront,
     double? totalInterest,
@@ -157,7 +166,7 @@ class Loan {
       hasInterest: hasInterest ?? this.hasInterest,
       interestType: interestType ?? this.interestType,
       interestRate: interestRate ?? this.interestRate,
-      interestIntervalDays: interestIntervalDays ?? this.interestIntervalDays,
+      interestInterval: interestInterval ?? this.interestInterval,
       fixedInterestAmount: fixedInterestAmount ?? this.fixedInterestAmount,
       collectUpfront: collectUpfront ?? this.collectUpfront,
       totalInterest: totalInterest ?? this.totalInterest,
