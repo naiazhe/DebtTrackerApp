@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/borrower.dart';
-import '../models/loan.dart';
 import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
 import '../services/user_service.dart';
@@ -37,7 +36,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
   String _interestApplication = 'one-time'; // 'one-time', 'monthly', 'quarterly', 'yearly', 'custom'
   String _interestType = 'flat';
 
-  double _totalInterest = 0.0; // Define as a local variable
+  double _totalInterest = 0.0;
   double _payoutAmount = 0.0;
   double _totalPayable = 0.0;
 
@@ -104,41 +103,38 @@ class AddLoanScreenState extends State<AddLoanScreen> {
 
     switch (_interestApplication) {
       case 'monthly':
-        return 30; // Monthly interval in days
+        return ((_dueDate!.year - _givenDate!.year) * 12 + (_dueDate!.month - _givenDate!.month)).clamp(0, double.infinity).toInt();
       case 'quarterly':
-        return 90; // Quarterly interval in days
+        return (((_dueDate!.year - _givenDate!.year) * 12 + (_dueDate!.month - _givenDate!.month)) / 3).clamp(0, double.infinity).toInt();
       case 'yearly':
-        return 365; // Yearly interval in days
-      case 'one-time':
-        return 0; // One-Time
-      default:
+        return (_dueDate!.year - _givenDate!.year).clamp(0, double.infinity).toInt();
+      case 'custom':
         final intervalDays = _parseInt(_intervalController.text);
-        return intervalDays > 0 ? intervalDays : 0;
+        return intervalDays > 0 ? (_durationDays / intervalDays).ceil() : 0;
+      default:
+        return 1; // One-time
     }
   }
 
   void _recalculate() {
     final loanAmount = _parseDouble(_loanAmountController.text);
+    double totalInterest = 0.0;
 
     if (_hasInterest) {
-      _totalInterest = Loan.calculateTotalInterest(
-        loanAmount: loanAmount,
-        hasInterest: _hasInterest,
-        interestType: _interestType,
-        interestRate: _parseDouble(_interestRateController.text),
-        interestInterval: _calculateNumberOfIntervals(),
-        fixedInterestAmount: _parseDouble(_fixedInterestController.text),
-        givenDate: _givenDate!,
-        dueDate: _dueDate!,
-      );
-    } else {
-      _totalInterest = 0.0;
+      if (_interestType == 'flat') {
+        final rate = _parseDouble(_interestRateController.text);
+        final numberOfIntervals = _calculateNumberOfIntervals();
+        totalInterest = loanAmount * (rate / 100) * numberOfIntervals;
+      } else {
+        totalInterest = _parseDouble(_fixedInterestController.text);
+      }
     }
 
-    final payout = (_collectUpfront && _hasInterest) ? (loanAmount - _totalInterest) : loanAmount;
-    final totalPayable = loanAmount + _totalInterest;
+    final payout = (_collectUpfront && _hasInterest) ? (loanAmount - totalInterest) : loanAmount;
+    final totalPayable = loanAmount + totalInterest;
 
     setState(() {
+      _totalInterest = totalInterest;
       _payoutAmount = payout;
       _totalPayable = totalPayable;
       if (_collectUpfront && _totalInterest > loanAmount) {
@@ -295,7 +291,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         hasInterest: _hasInterest,
         interestType: _hasInterest ? _interestType : 'flat',
         interestRate: interestRate,
-        interestInterval: interestInterval, // Updated parameter
+        interestIntervalDays: interestInterval,
         fixedInterestAmount: fixedInterestAmount,
         collectUpfront: _collectUpfront,
         notes: _notesController.text.trim(),
@@ -354,7 +350,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                   child: DropdownButtonFormField<Borrower>(
-                    value: borrowerService.borrowers.contains(_selectedBorrower) ? _selectedBorrower : null, // Ensure value matches items
+                    initialValue: _selectedBorrower,
                     hint: const Text('Select Borrower'),
                     decoration: const InputDecoration(border: InputBorder.none),
                     items: borrowerService.borrowers

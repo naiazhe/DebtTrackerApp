@@ -8,7 +8,7 @@ class Loan {
   final bool hasInterest;
   final String interestType;
   final double? interestRate;
-  final int? interestInterval;
+  final int? interestIntervalDays;
   final double? fixedInterestAmount;
   final bool collectUpfront;
   final double totalInterest;
@@ -30,7 +30,7 @@ class Loan {
     required this.hasInterest,
     required this.interestType,
     this.interestRate,
-    this.interestInterval,
+    this.interestIntervalDays,
     this.fixedInterestAmount,
     this.collectUpfront = false,
     required this.totalInterest,
@@ -43,26 +43,33 @@ class Loan {
     required this.updatedAt,
   });
 
-  static double calculateTotalInterest({
-    required double loanAmount,
-    required bool hasInterest,
-    required String interestType,
-    double? interestRate,
-    int? interestInterval,
-    double? fixedInterestAmount,
-    required DateTime givenDate,
-    required DateTime dueDate,
-  }) {
+  double calculateTotalInterest() {
     if (!hasInterest) return 0.0;
 
     if (interestType == 'flat') {
       final rate = interestRate ?? 0;
-      if (interestInterval == null || interestInterval == 0) {
-        return loanAmount * (rate / 100); // One-Time
+      int intervals = 0;
+
+      switch (interestType) {
+        case 'monthly':
+          intervals = ((dueDate.year - givenDate.year) * 12 + (dueDate.month - givenDate.month)).clamp(0, double.infinity).toInt();
+          break;
+        case 'quarterly':
+          intervals = (((dueDate.year - givenDate.year) * 12 + (dueDate.month - givenDate.month)) / 3).clamp(0, double.infinity).toInt();
+          break;
+        case 'yearly':
+          intervals = (dueDate.year - givenDate.year).clamp(0, double.infinity).toInt();
+          break;
+        case 'custom':
+          if (interestIntervalDays != null && interestIntervalDays! > 0) {
+            final durationDays = dueDate.difference(givenDate).inDays;
+            intervals = (durationDays / interestIntervalDays!).floor();
+          }
+          break;
+        default:
+          intervals = 1; // One-time
       }
 
-      final totalDays = dueDate.difference(givenDate).inDays;
-      final intervals = (totalDays / interestInterval).ceil();
       return loanAmount * (rate / 100) * intervals;
     } else {
       return fixedInterestAmount ?? 0;
@@ -95,7 +102,7 @@ class Loan {
       'has_interest': hasInterest ? 1 : 0,
       'interest_type': interestType,
       'interest_rate': interestRate,
-      'interest_interval': interestInterval,
+      'interest_interval': interestIntervalDays,
       'fixed_interest_amount': fixedInterestAmount,
       'collect_upfront': collectUpfront ? 1 : 0,
       'total_interest': totalInterest,
@@ -120,7 +127,7 @@ class Loan {
       hasInterest: (map['has_interest'] as int) == 1,
       interestType: map['interest_type'] as String,
       interestRate: map['interest_rate'] != null ? (map['interest_rate'] as num).toDouble() : null,
-      interestInterval: map['interest_interval'] as int?,
+      interestIntervalDays: map['interest_interval'] as int?,
       fixedInterestAmount: map['fixed_interest_amount'] != null ? (map['fixed_interest_amount'] as num).toDouble() : null,
       collectUpfront: (map['collect_upfront'] as int) == 1,
       totalInterest: (map['total_interest'] as num).toDouble(),
@@ -144,7 +151,7 @@ class Loan {
     bool? hasInterest,
     String? interestType,
     double? interestRate,
-    int? interestInterval,
+    int? interestIntervalDays,
     double? fixedInterestAmount,
     bool? collectUpfront,
     double? totalInterest,
@@ -166,7 +173,7 @@ class Loan {
       hasInterest: hasInterest ?? this.hasInterest,
       interestType: interestType ?? this.interestType,
       interestRate: interestRate ?? this.interestRate,
-      interestInterval: interestInterval ?? this.interestInterval,
+      interestIntervalDays: interestIntervalDays ?? this.interestIntervalDays,
       fixedInterestAmount: fixedInterestAmount ?? this.fixedInterestAmount,
       collectUpfront: collectUpfront ?? this.collectUpfront,
       totalInterest: totalInterest ?? this.totalInterest,

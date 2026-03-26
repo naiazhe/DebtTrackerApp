@@ -159,7 +159,7 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
                   child: _buildInfoCard(
                     icon: Icons.calendar_view_day,
                     label: 'Interest Interval',
-                    value: _getInterestIntervalDisplay(_currentLoan.interestInterval),
+                    value: _getInterestIntervalDisplay(_currentLoan.interestIntervalDays),
                   ),
                 ),
               const SizedBox(height: 8),
@@ -372,20 +372,17 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
     );
   }
 
-  String _getInterestIntervalDisplay(int? interestInterval) {
-    if (interestInterval == null || interestInterval == 0) {
+  String _getInterestIntervalDisplay(int? interval) {
+    if (interval == null || interval == 0) {
       return 'One-Time';
-    }
-
-    switch (interestInterval) {
-      case 30:
-        return 'Monthly';
-      case 90:
-        return 'Quarterly (3 months)';
-      case 365:
-        return 'Yearly';
-      default:
-        return '$interestInterval days';
+    } else if (interval == 30) {
+      return '1 month';
+    } else if (interval == 90) {
+      return '3 months';
+    } else if (interval == 365) {
+      return '1 year';
+    } else {
+      return '$interval days';
     }
   }
 }

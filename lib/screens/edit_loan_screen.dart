@@ -67,7 +67,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     _interestType = loan.interestType;
     if (_interestType == 'flat') {
       _interestRateController.text = (loan.interestRate ?? 0).toStringAsFixed(2);
-      final interval = loan.interestInterval;
+      final interval = loan.interestIntervalDays;
       if (interval == null) {
         _interestApplication = 'one-time';
       } else if (interval == 30) {
@@ -302,7 +302,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       hasInterest: _hasInterest,
       interestType: _interestType,
       interestRate: _interestType == 'flat' ? _parseDouble(_interestRateController.text) : null,
-      interestInterval: _interestType == 'flat' && _interestApplication != 'one-time' ? _parseInt(_intervalController.text) : null,
+      interestIntervalDays: _interestType == 'flat' && _interestApplication != 'one-time' ? _parseInt(_intervalController.text) : null,
       fixedInterestAmount: _interestType == 'fixed' ? _parseDouble(_fixedInterestController.text) : null,
       collectUpfront: _collectUpfront,
       totalInterest: _totalInterest,

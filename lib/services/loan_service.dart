@@ -42,7 +42,7 @@ class LoanService extends ChangeNotifier {
     required bool hasInterest,
     required String interestType,
     double? interestRate,
-    int? interestInterval,
+    int? interestIntervalDays,
     double? fixedInterestAmount,
     bool collectUpfront = false,
     String status = 'active',
@@ -57,10 +57,8 @@ class LoanService extends ChangeNotifier {
       hasInterest: hasInterest,
       interestType: interestType,
       interestRate: interestRate,
-      interestInterval: interestInterval,
+      interestIntervalDays: interestIntervalDays,
       fixedInterestAmount: fixedInterestAmount,
-      givenDate: givenDate,
-      dueDate: dueDate,
     );
 
     final totalPayable = Loan.calculateTotalPayable(payoutAmount: payoutAmount, totalInterest: totalInterest);
@@ -74,7 +72,7 @@ class LoanService extends ChangeNotifier {
       hasInterest: hasInterest,
       interestType: interestType,
       interestRate: interestType == 'flat' ? interestRate : null,
-      interestInterval: interestType == 'flat' ? interestInterval : null,
+      interestIntervalDays: interestType == 'flat' ? interestIntervalDays : null,
       fixedInterestAmount: interestType == 'fixed' ? fixedInterestAmount : null,
       collectUpfront: collectUpfront,
       totalInterest: totalInterest,
@@ -135,7 +133,7 @@ class LoanService extends ChangeNotifier {
       hasInterest: loan.hasInterest,
       interestType: loan.interestType,
       interestRate: loan.interestRate,
-      interestInterval: loan.interestInterval,
+      interestIntervalDays: loan.interestIntervalDays,
       fixedInterestAmount: loan.fixedInterestAmount,
       collectUpfront: loan.collectUpfront,
       totalInterest: loan.totalInterest,

@@ -277,7 +277,7 @@ class _LoanScreenState extends State<LoanScreen> {
 
     if (loan.interestType == 'flat') {
       final rate = loan.interestRate ?? 0;
-      final interval = loan.interestInterval;
+      final interval = loan.interestIntervalDays;
       String intervalText = '';
       if (interval == null || interval == 0) {
         intervalText = 'one-time';
