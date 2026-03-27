@@ -7,6 +7,7 @@ import '../services/loan_service.dart';
 import '../services/user_service.dart';
 import '../widgets/loading_widget.dart';
 import 'add_loan_screen.dart';
+import 'loan_view_screen.dart';
 
 class LoanScreen extends StatefulWidget {
   const LoanScreen({Key? key}) : super(key: key);
@@ -202,70 +203,82 @@ class _LoanScreenState extends State<LoanScreen> {
     final name = borrower != null ? '${borrower.firstName} ${borrower.lastName}' : 'Unknown';
     final initial = borrower != null && borrower.firstName.isNotEmpty ? borrower.firstName[0].toUpperCase() : 'A';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x11000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LoanViewScreen(loan: loan),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Avatar Section
-              CircleAvatar(
-                backgroundColor: const Color(0xFF00273B),
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+        );
+        if (!mounted) return;
+        await _loadData();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x11000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar Section
+                CircleAvatar(
+                  backgroundColor: const Color(0xFF00273B),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              // Borrower Name Section
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 16),
+                // Borrower Name Section
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              // Loan and Balance Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Loan: ₱ ${loan.loanAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  Text(
-                    'Balance: ₱ ${loan.remainingBalance.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Loan Terms Section
-          Text(
-            _buildInterestDetails(loan),
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-        ],
+                // Loan and Balance Section
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Loan: ₱ ${loan.loanAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    Text(
+                      'Balance: ₱ ${loan.remainingBalance.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Loan Terms Section
+            Text(
+              _buildInterestDetails(loan),
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -278,17 +291,20 @@ class _LoanScreenState extends State<LoanScreen> {
     if (loan.interestType == 'flat') {
       final rate = loan.interestRate ?? 0;
       final interval = loan.interestIntervalDays;
+      final unit = loan.interestIntervalUnit;
       String intervalText = '';
-      if (interval == null || interval == 0) {
+      if (interval == null || interval <= 0) {
         intervalText = 'one-time';
-      } else if (interval == 30) {
+      } else if (unit == 'months' && interval == 1) {
         intervalText = 'monthly';
-      } else if (interval == 90) {
+      } else if (unit == 'months' && interval == 3) {
         intervalText = 'quarterly';
-      } else if (interval == 365) {
+      } else if (unit == 'months' && interval == 12) {
         intervalText = 'yearly';
-      } else {
+      } else if (unit == 'days') {
         intervalText = 'every $interval days';
+      } else {
+        intervalText = 'custom';
       }
       return 'Interest: ${rate.toStringAsFixed(2)}% | Applied $intervalText';
     } else {

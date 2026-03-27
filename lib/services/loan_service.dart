@@ -43,6 +43,7 @@ class LoanService extends ChangeNotifier {
     required String interestType,
     double? interestRate,
     int? interestIntervalDays,
+    String? interestIntervalUnit,
     double? fixedInterestAmount,
     bool collectUpfront = false,
     String status = 'active',
@@ -62,6 +63,7 @@ class LoanService extends ChangeNotifier {
       interestType: interestType,
       interestRate: interestType == 'flat' ? interestRate : null,
       interestIntervalDays: interestType == 'flat' ? interestIntervalDays : null,
+      interestIntervalUnit: interestType == 'flat' ? interestIntervalUnit : null,
       fixedInterestAmount: interestType == 'fixed' ? fixedInterestAmount : null,
       collectUpfront: collectUpfront,
       totalInterest: 0.0, // Placeholder
@@ -86,6 +88,7 @@ class LoanService extends ChangeNotifier {
       interestType: interestType,
       interestRate: interestType == 'flat' ? interestRate : null,
       interestIntervalDays: interestType == 'flat' ? interestIntervalDays : null,
+      interestIntervalUnit: interestType == 'flat' ? interestIntervalUnit : null,
       fixedInterestAmount: interestType == 'fixed' ? fixedInterestAmount : null,
       collectUpfront: collectUpfront,
       totalInterest: totalInterest,
@@ -120,7 +123,7 @@ class LoanService extends ChangeNotifier {
   Future<void> updateLoan(Loan loan) async {
     if (loan.loanId == null) throw Exception('Loan ID is required for update');
     await _db.updateLoan(loan);
-    await loadLoans(loan.borrowerId);
+    await loadAllLoans();
   }
 
   Future<void> registerPayment({
@@ -147,6 +150,7 @@ class LoanService extends ChangeNotifier {
       interestType: loan.interestType,
       interestRate: loan.interestRate,
       interestIntervalDays: loan.interestIntervalDays,
+      interestIntervalUnit: loan.interestIntervalUnit,
       fixedInterestAmount: loan.fixedInterestAmount,
       collectUpfront: loan.collectUpfront,
       totalInterest: loan.totalInterest,
@@ -180,6 +184,6 @@ class LoanService extends ChangeNotifier {
     );
     await _db.createTransaction(transaction);
 
-    await loadLoans(loan.borrowerId);
+    await loadAllLoans();
   }
 }

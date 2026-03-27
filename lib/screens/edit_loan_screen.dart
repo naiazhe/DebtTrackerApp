@@ -46,6 +46,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
   String? _intervalError;
   String? _fixedInterestError;
   String? _upfrontError;
+  String? _interestApplicationError;
 
   static const Color lightColor = Color(0xFFE6F1F6);
   static const Color normalColor = Color(0xFF0070A8);
@@ -68,13 +69,14 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     if (_interestType == 'flat') {
       _interestRateController.text = (loan.interestRate ?? 0).toStringAsFixed(2);
       final interval = loan.interestIntervalDays;
-      if (interval == null) {
+      final unit = loan.interestIntervalUnit;
+      if (interval == null || interval <= 0) {
         _interestApplication = 'one-time';
-      } else if (interval == 30) {
+      } else if (unit == 'months' && interval == 1) {
         _interestApplication = 'monthly';
-      } else if (interval == 90) {
+      } else if (unit == 'months' && interval == 3) {
         _interestApplication = 'quarterly';
-      } else if (interval == 365) {
+      } else if (unit == 'months' && interval == 12) {
         _interestApplication = 'yearly';
       } else {
         _interestApplication = 'custom';
@@ -134,6 +136,10 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
   double _parseDouble(String value) => double.tryParse(value.replaceAll(',', '')) ?? 0.0;
   int _parseInt(String value) => int.tryParse(value.replaceAll(',', '')) ?? 0;
 
+  int _calculateMonthsBetween(DateTime start, DateTime end) {
+    return (end.year - start.year) * 12 + (end.month - start.month);
+  }
+
   void _recalculate() {
     final loanAmount = _parseDouble(_loanAmountController.text);
     double totalInterest = 0.0;
@@ -146,25 +152,37 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
         if (_interestApplication == 'one-time') {
           totalInterest = loanAmount * (rate / 100);
         } else {
-          int intervalDays;
+          int intervalValue;
+          String intervalUnit;
           switch (_interestApplication) {
             case 'monthly':
-              intervalDays = 30;
+              intervalValue = 1;
+              intervalUnit = 'months';
               break;
             case 'quarterly':
-              intervalDays = 90;
+              intervalValue = 3;
+              intervalUnit = 'months';
               break;
             case 'yearly':
-              intervalDays = 365;
+              intervalValue = 12;
+              intervalUnit = 'months';
               break;
             case 'custom':
-              intervalDays = _parseInt(_intervalController.text);
+              intervalValue = _parseInt(_intervalController.text);
+              intervalUnit = 'days';
               break;
             default:
-              intervalDays = 30;
+              intervalValue = 1;
+              intervalUnit = 'months';
           }
-          if (intervalDays > 0 && _durationDays > 0) {
-            final numberOfIntervals = _durationDays / intervalDays;
+          if (intervalValue > 0) {
+            int numberOfIntervals;
+            if (intervalUnit == 'months') {
+              final monthsBetween = ((_dueDate!.year - _givenDate!.year) * 12 + (_dueDate!.month - _givenDate!.month)).clamp(0, double.infinity).toInt();
+              numberOfIntervals = (monthsBetween / intervalValue).floor();
+            } else {
+              numberOfIntervals = _durationDays > 0 ? (_durationDays / intervalValue).floor() : 0;
+            }
             totalInterest = loanAmount * (rate / 100) * numberOfIntervals;
           }
         }
@@ -189,6 +207,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       _totalInterest = totalInterest;
       _payoutAmount = payout;
       _totalPayable = totalPayable;
+      _interestApplicationError = _validateInterestApplication();
       if (_collectUpfront && _hasInterest && totalInterest > loanAmount) {
         _upfrontError = 'Interest cannot exceed loan amount for upfront deduction';
       } else {
@@ -200,7 +219,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
   Future<void> _pickDate({required bool isGivenDate}) async {
     final initial = isGivenDate ? (_givenDate ?? DateTime.now()) : (_dueDate ?? DateTime.now().add(const Duration(days: 30)));
     final selected = await showDatePicker(context: context, initialDate: initial, firstDate: DateTime(2000), lastDate: DateTime(2100));
-    if (selected == null) return;
+    if (!mounted || selected == null) return;
 
     setState(() {
       if (isGivenDate) {
@@ -212,8 +231,10 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
         _dueDateController.text = _formatDate(selected);
         _dueDateError = _validateDueDate(_dueDateController.text);
       }
-      _recalculate();
+      _interestApplicationError = _validateInterestApplication();
     });
+
+    _recalculate();
   }
 
   String _formatDate(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -241,6 +262,35 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     final v = _parseDouble(value);
     if (v <= 0) return 'Interest rate must be > 0';
     if (v > 100) return 'Interest rate seems unreasonable';
+    return null;
+  }
+
+  String? _validateInterestApplication() {
+    if (!_hasInterest || _interestType != 'flat') return null;
+    if (_givenDate == null || _dueDate == null) return null;
+
+    final monthsBetween = _calculateMonthsBetween(_givenDate!, _dueDate!);
+
+    switch (_interestApplication) {
+      case 'monthly':
+        if (monthsBetween < 1) {
+          return 'Loan duration must be at least 1 month for monthly interest.';
+        }
+        break;
+      case 'quarterly':
+        if (monthsBetween < 3) {
+          return 'Loan duration must be at least 3 months for quarterly interest.';
+        }
+        break;
+      case 'yearly':
+        if (monthsBetween < 12) {
+          return 'Loan duration must be at least 1 year for yearly interest.';
+        }
+        break;
+      default:
+        break;
+    }
+
     return null;
   }
 
@@ -272,6 +322,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       _dueDateError = _validateDueDate(_dueDateController.text);
       if (_hasInterest && _interestType == 'flat') {
         _interestRateError = _validateInterestRate(_interestRateController.text);
+        _interestApplicationError = _validateInterestApplication();
         _intervalError = _interestApplication == 'custom' ? _validateInterval(_intervalController.text) : null;
       }
       if (_hasInterest && _interestType == 'fixed') {
@@ -279,7 +330,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       }
     });
 
-    if (_loanAmountError != null || _givenDateError != null || _dueDateError != null || _interestRateError != null || _fixedInterestError != null || (_interestApplication == 'custom' && _intervalError != null)) return;
+    if (_loanAmountError != null || _givenDateError != null || _dueDateError != null || _interestRateError != null || _fixedInterestError != null || (_interestApplication == 'custom' && _intervalError != null) || _interestApplicationError != null) return;
 
     if (_selectedBorrower == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Borrower must be selected')));
@@ -293,6 +344,33 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     }
 
     final loanService = context.read<LoanService>();
+    int? interestIntervalDays;
+    String? interestIntervalUnit;
+    if (_interestType == 'flat') {
+      switch (_interestApplication) {
+        case 'monthly':
+          interestIntervalDays = 1;
+          interestIntervalUnit = 'months';
+          break;
+        case 'quarterly':
+          interestIntervalDays = 3;
+          interestIntervalUnit = 'months';
+          break;
+        case 'yearly':
+          interestIntervalDays = 12;
+          interestIntervalUnit = 'months';
+          break;
+        case 'custom':
+          interestIntervalDays = _parseInt(_intervalController.text);
+          interestIntervalUnit = 'days';
+          break;
+        case 'one-time':
+        default:
+          interestIntervalDays = null;
+          interestIntervalUnit = null;
+      }
+    }
+
     final updatedLoan = widget.loan.copyWith(
       borrowerId: _selectedBorrower!.borrowerId,
       loanAmount: loanAmount,
@@ -302,7 +380,8 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       hasInterest: _hasInterest,
       interestType: _interestType,
       interestRate: _interestType == 'flat' ? _parseDouble(_interestRateController.text) : null,
-      interestIntervalDays: _interestType == 'flat' && _interestApplication != 'one-time' ? _parseInt(_intervalController.text) : null,
+      interestIntervalDays: interestIntervalDays,
+      interestIntervalUnit: interestIntervalUnit,
       fixedInterestAmount: _interestType == 'fixed' ? _parseDouble(_fixedInterestController.text) : null,
       collectUpfront: _collectUpfront,
       totalInterest: _totalInterest,
@@ -424,7 +503,43 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
                   if (_interestType == 'flat') ...[
                     _buildInputCardWithError(icon: Icons.percent, error: _interestRateError, child: TextFormField(controller: _interestRateController, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], decoration: const InputDecoration(labelText: 'Interest (%)', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null), onChanged: (value) { setState(() { _interestRateError = _validateInterestRate(value); }); _recalculate(); },)),
                     const SizedBox(height: 8),
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: DropdownButtonFormField<String>(value: _interestApplication, decoration: const InputDecoration(labelText: 'Applied Every', border: InputBorder.none), items: const [DropdownMenuItem(value: 'one-time', child: Text('One-time')), DropdownMenuItem(value: 'monthly', child: Text('Monthly')), DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')), DropdownMenuItem(value: 'yearly', child: Text('Yearly')), DropdownMenuItem(value: 'custom', child: Text('Custom (days)'))], onChanged: (value) { if (value != null) { setState(() { _interestApplication = value; _recalculate(); }); } },)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                          child: DropdownButtonFormField<String>(
+                            value: _interestApplication,
+                            decoration: const InputDecoration(labelText: 'Applied Every', border: InputBorder.none),
+                            items: const [
+                              DropdownMenuItem(value: 'one-time', child: Text('One-time')),
+                              DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                              DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')),
+                              DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                              DropdownMenuItem(value: 'custom', child: Text('Custom (days)')),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _interestApplication = value;
+                                  _interestApplicationError = _validateInterestApplication();
+                                  _recalculate();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                        if (_interestApplicationError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6, left: 4),
+                            child: Text(
+                              _interestApplicationError!,
+                              style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     if (_interestApplication == 'custom') ...[
                       _buildInputCardWithError(icon: Icons.calendar_view_day, error: _intervalError, child: TextFormField(controller: _intervalController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], decoration: const InputDecoration(labelText: 'Applied Every (days)', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null), onChanged: (value) { setState(() { _intervalError = _validateInterval(value); }); _recalculate(); },)),

@@ -17,8 +17,8 @@ class BorrowerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addBorrower(Borrower borrower) async {
-    await _db.createBorrower(borrower);
+  Future<int> addBorrower(Borrower borrower) async {
+    return await _db.createBorrower(borrower);
   }
 
   Future<void> updateBorrower(Borrower borrower) async {

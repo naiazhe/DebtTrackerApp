@@ -69,21 +69,42 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF0070A8),
-        unselectedItemColor: const Color(0xFF0070A8),
-        selectedIconTheme: const IconThemeData(color: Color(0xFF0070A8)),
-        unselectedIconTheme: const IconThemeData(color: Color(0xFF0070A8)),
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Borrower'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: 'Loan'),
-          BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'Transaction'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            // slight shadow on top of the bar
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 8,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          height: 70, // increased height for better touch target
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            selectedItemColor: const Color(0xFF0070A8),
+            unselectedItemColor: Colors.black,
+            selectedIconTheme: const IconThemeData(color: Color(0xFF0070A8), size: 28),
+            unselectedIconTheme: const IconThemeData(color: Colors.black, size: 26),
+            iconSize: 26,
+            selectedFontSize: 13,
+            unselectedFontSize: 12,
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Borrower'),
+              BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Loan'),
+              BottomNavigationBarItem(icon: Icon(Icons.monetization_on), label: 'Transaction'),
+              BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -14,8 +14,12 @@ class DatabaseHelper {
   static Database? _database;
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null) {
+      await _ensureSchema(_database!);
+      return _database!;
+    }
     _database = await _initDatabase();
+    await _ensureSchema(_database!);
     return _database!;
   }
 
@@ -25,8 +29,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -69,6 +74,7 @@ class DatabaseHelper {
         interest_type TEXT NOT NULL,
         interest_rate REAL,
         interest_interval INTEGER, -- Updated column for interval types
+        interest_interval_unit TEXT,
         fixed_interest_amount REAL,
         collect_upfront INTEGER NOT NULL,
         total_interest REAL NOT NULL,
@@ -109,6 +115,21 @@ class DatabaseHelper {
         FOREIGN KEY(loan_id) REFERENCES loans(loan_id) ON DELETE SET NULL
       );
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE loans ADD COLUMN interest_interval_unit TEXT');
+    }
+  }
+
+  Future<void> _ensureSchema(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(loans)');
+    final hasInterestIntervalUnit = columns.any((c) => c['name'] == 'interest_interval_unit');
+
+    if (!hasInterestIntervalUnit) {
+      await db.execute('ALTER TABLE loans ADD COLUMN interest_interval_unit TEXT');
+    }
   }
 
   // User CRUD

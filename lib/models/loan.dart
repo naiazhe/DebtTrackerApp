@@ -9,6 +9,7 @@ class Loan {
   final String interestType;
   final double? interestRate;
   final int? interestIntervalDays;
+  final String? interestIntervalUnit;
   final double? fixedInterestAmount;
   final bool collectUpfront;
   final double totalInterest;
@@ -31,6 +32,7 @@ class Loan {
     required this.interestType,
     this.interestRate,
     this.interestIntervalDays,
+    this.interestIntervalUnit,
     this.fixedInterestAmount,
     this.collectUpfront = false,
     required this.totalInterest,
@@ -48,26 +50,18 @@ class Loan {
 
     if (interestType == 'flat') {
       final rate = interestRate ?? 0;
-      int intervals = 0;
+      int intervals;
+      final intervalValue = interestIntervalDays;
+      final intervalUnit = interestIntervalUnit;
 
-      switch (interestType) {
-        case 'monthly':
-          intervals = ((dueDate.year - givenDate.year) * 12 + (dueDate.month - givenDate.month)).clamp(0, double.infinity).toInt();
-          break;
-        case 'quarterly':
-          intervals = (((dueDate.year - givenDate.year) * 12 + (dueDate.month - givenDate.month)) / 3).clamp(0, double.infinity).toInt();
-          break;
-        case 'yearly':
-          intervals = (dueDate.year - givenDate.year).clamp(0, double.infinity).toInt();
-          break;
-        case 'custom':
-          if (interestIntervalDays != null && interestIntervalDays! > 0) {
-            final durationDays = dueDate.difference(givenDate).inDays;
-            intervals = (durationDays / interestIntervalDays!).floor();
-          }
-          break;
-        default:
-          intervals = 1; // One-time
+      if (intervalValue == null || intervalValue <= 0) {
+        intervals = 1; // One-time
+      } else if (intervalUnit == 'months') {
+        final monthsBetween = ((dueDate.year - givenDate.year) * 12 + (dueDate.month - givenDate.month)).clamp(0, double.infinity).toInt();
+        intervals = (monthsBetween / intervalValue).floor();
+      } else {
+        final durationDays = dueDate.difference(givenDate).inDays;
+        intervals = durationDays > 0 ? (durationDays / intervalValue).floor() : 0;
       }
 
       return loanAmount * (rate / 100) * intervals;
@@ -103,6 +97,7 @@ class Loan {
       'interest_type': interestType,
       'interest_rate': interestRate,
       'interest_interval': interestIntervalDays,
+      'interest_interval_unit': interestIntervalUnit,
       'fixed_interest_amount': fixedInterestAmount,
       'collect_upfront': collectUpfront ? 1 : 0,
       'total_interest': totalInterest,
@@ -117,6 +112,12 @@ class Loan {
   }
 
   factory Loan.fromMap(Map<String, dynamic> map) {
+    final rawInterval = map['interest_interval'] as int?;
+    final rawUnit = map['interest_interval_unit'] as String?;
+
+    // Backward compatibility for older rows that stored monthly/quarterly/yearly as 30/90/365 days.
+    final normalized = _normalizeInterval(rawInterval, rawUnit);
+
     return Loan(
       loanId: map['loan_id'] as int?,
       borrowerId: map['borrower_id'] as int,
@@ -127,7 +128,8 @@ class Loan {
       hasInterest: (map['has_interest'] as int) == 1,
       interestType: map['interest_type'] as String,
       interestRate: map['interest_rate'] != null ? (map['interest_rate'] as num).toDouble() : null,
-      interestIntervalDays: map['interest_interval'] as int?,
+      interestIntervalDays: normalized.value,
+      interestIntervalUnit: normalized.unit,
       fixedInterestAmount: map['fixed_interest_amount'] != null ? (map['fixed_interest_amount'] as num).toDouble() : null,
       collectUpfront: (map['collect_upfront'] as int) == 1,
       totalInterest: (map['total_interest'] as num).toDouble(),
@@ -152,6 +154,7 @@ class Loan {
     String? interestType,
     double? interestRate,
     int? interestIntervalDays,
+    String? interestIntervalUnit,
     double? fixedInterestAmount,
     bool? collectUpfront,
     double? totalInterest,
@@ -174,6 +177,7 @@ class Loan {
       interestType: interestType ?? this.interestType,
       interestRate: interestRate ?? this.interestRate,
       interestIntervalDays: interestIntervalDays ?? this.interestIntervalDays,
+      interestIntervalUnit: interestIntervalUnit ?? this.interestIntervalUnit,
       fixedInterestAmount: fixedInterestAmount ?? this.fixedInterestAmount,
       collectUpfront: collectUpfront ?? this.collectUpfront,
       totalInterest: totalInterest ?? this.totalInterest,
@@ -185,6 +189,23 @@ class Loan {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  static ({int? value, String? unit}) _normalizeInterval(int? interval, String? unit) {
+    if (interval == null || interval <= 0) {
+      return (value: null, unit: null);
+    }
+
+    if (unit == 'months' || unit == 'days') {
+      return (value: interval, unit: unit);
+    }
+
+    // Legacy fallback: previous implementation stored preset month options as day constants.
+    if (interval == 30) return (value: 1, unit: 'months');
+    if (interval == 90) return (value: 3, unit: 'months');
+    if (interval == 365) return (value: 12, unit: 'months');
+
+    return (value: interval, unit: 'days');
   }
 }
 

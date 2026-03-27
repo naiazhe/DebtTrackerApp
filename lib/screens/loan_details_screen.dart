@@ -94,19 +94,19 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit, color: normalColor),
-              onPressed: () async {
-                final updatedLoan = await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => EditLoanScreen(loan: _currentLoan),
-                  ),
-                );
-                if (updatedLoan != null && updatedLoan is Loan) {
-                  setState(() {
-                    _currentLoan = updatedLoan;
-                  });
-                  await _loadBorrowerAndPayments();
-                }
-              },
+            onPressed: () async {
+              final updatedLoan = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => EditLoanScreen(loan: _currentLoan),
+                ),
+              );
+              if (updatedLoan != null && updatedLoan is Loan) {
+                setState(() {
+                  _currentLoan = updatedLoan;
+                });
+                await _loadBorrowerAndPayments();
+              }
+            },
           ),
         ],
       ),
@@ -116,7 +116,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Borrower Section
               _buildSectionHeader('Borrower Details'),
               _buildInfoCard(
                 icon: Icons.person,
@@ -125,7 +124,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Loan Amount Section
               _buildSectionHeader('Loan Amount'),
               _buildInfoCard(
                 icon: Icons.attach_money,
@@ -137,20 +135,15 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
                 icon: Icons.payments,
                 label: 'Payout Amount',
                 value: '₱ ${_formatCurrency(_currentLoan.payoutAmount)}',
-                subValue: _currentLoan.collectUpfront && _currentLoan.hasInterest
-                    ? '(Loan - Upfront Interest)'
-                    : null,
+                subValue: _currentLoan.collectUpfront && _currentLoan.hasInterest ? '(Loan - Upfront Interest)' : null,
               ),
               const SizedBox(height: 20),
 
-              // Interest Section
               _buildSectionHeader('Interest Details'),
               _buildInfoCard(
                 icon: Icons.info_outline,
                 label: 'Interest Type',
-                value: !_currentLoan.hasInterest
-                    ? 'None'
-                    : _currentLoan.interestType == 'flat' ? 'Flat Rate' : 'Fixed Amount',
+                value: !_currentLoan.hasInterest ? 'None' : _currentLoan.interestType == 'flat' ? 'Flat Rate' : 'Fixed Amount',
               ),
               const SizedBox(height: 8),
               if (_currentLoan.interestType == 'flat' && _currentLoan.hasInterest)
@@ -159,7 +152,7 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
                   child: _buildInfoCard(
                     icon: Icons.calendar_view_day,
                     label: 'Interest Interval',
-                    value: _getInterestIntervalDisplay(_currentLoan.interestIntervalDays),
+                    value: _getInterestIntervalDisplay(_currentLoan.interestIntervalDays, _currentLoan.interestIntervalUnit),
                   ),
                 ),
               const SizedBox(height: 8),
@@ -170,7 +163,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Loan Timeline Section
               _buildSectionHeader('Loan Timeline'),
               _buildInfoCard(
                 icon: Icons.calendar_today,
@@ -192,7 +184,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Summary Section
               _buildSectionHeader('Summary'),
               Container(
                 padding: const EdgeInsets.all(14),
@@ -227,7 +218,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Notes Section (if has notes)
               if (_currentLoan.notes != null && _currentLoan.notes!.isNotEmpty)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +242,6 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
                   ],
                 ),
 
-              // Status Badge
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -372,17 +361,19 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
     );
   }
 
-  String _getInterestIntervalDisplay(int? interval) {
-    if (interval == null || interval == 0) {
+  String _getInterestIntervalDisplay(int? interval, String? unit) {
+    if (interval == null || interval <= 0) {
       return 'One-Time';
-    } else if (interval == 30) {
+    } else if (unit == 'months' && interval == 1) {
       return '1 month';
-    } else if (interval == 90) {
+    } else if (unit == 'months' && interval == 3) {
       return '3 months';
-    } else if (interval == 365) {
+    } else if (unit == 'months' && interval == 12) {
       return '1 year';
-    } else {
+    } else if (unit == 'days') {
       return '$interval days';
+    } else {
+      return 'Custom';
     }
   }
 }

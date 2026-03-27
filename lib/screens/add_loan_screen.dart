@@ -115,7 +115,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         return (_dueDate!.year - _givenDate!.year).clamp(0, double.infinity).toInt();
       case 'custom':
         final intervalDays = _parseInt(_intervalController.text);
-        return intervalDays > 0 ? (_durationDays / intervalDays).ceil() : 0;
+        return intervalDays > 0 ? (_durationDays / intervalDays).floor() : 0;
       default:
         return 1; // One-time
     }
@@ -157,7 +157,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
     final last = DateTime(2100);
 
     final selected = await showDatePicker(context: context, initialDate: initial, firstDate: first, lastDate: last);
-    if (selected == null) return;
+    if (!mounted || selected == null) return;
 
     setState(() {
       if (isGivenDate) {
@@ -170,8 +170,9 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         _dueDateError = _validateDueDate(_dueDateController.text);
       }
       _interestApplicationError = _validateInterestApplication();
-      _recalculate();
     });
+
+    _recalculate();
   }
 
   void _selectInterestType(String type) {
@@ -313,7 +314,32 @@ class AddLoanScreenState extends State<AddLoanScreen> {
     final loanAmount = _parseDouble(_loanAmountController.text);
     final payoutAmount = _payoutAmount;
     final interestRate = _hasInterest && _interestType == 'flat' ? _parseDouble(_interestRateController.text) : null;
-    final interestInterval = _hasInterest && _interestType == 'flat' ? _parseInt(_intervalController.text) : null;
+    int? interestInterval;
+    String? interestIntervalUnit;
+    if (_hasInterest && _interestType == 'flat') {
+      switch (_interestApplication) {
+        case 'monthly':
+          interestInterval = 1;
+          interestIntervalUnit = 'months';
+          break;
+        case 'quarterly':
+          interestInterval = 3;
+          interestIntervalUnit = 'months';
+          break;
+        case 'yearly':
+          interestInterval = 12;
+          interestIntervalUnit = 'months';
+          break;
+        case 'custom':
+          interestInterval = _parseInt(_intervalController.text);
+          interestIntervalUnit = 'days';
+          break;
+        case 'one-time':
+        default:
+          interestInterval = null;
+          interestIntervalUnit = null;
+      }
+    }
     final fixedInterestAmount = _hasInterest && _interestType == 'fixed' ? _parseDouble(_fixedInterestController.text) : null;
 
     final loanService = context.read<LoanService>();
@@ -329,13 +355,14 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         interestType: _hasInterest ? _interestType : 'flat',
         interestRate: interestRate,
         interestIntervalDays: interestInterval,
+        interestIntervalUnit: interestIntervalUnit,
         fixedInterestAmount: fixedInterestAmount,
         collectUpfront: _collectUpfront,
         notes: _notesController.text.trim(),
       );
 
       await loanService.addLoanTransaction(userId: userId, borrowerId: _selectedBorrower!.borrowerId!, loanId: createdLoan.loanId!, amount: createdLoan.totalPayable);
-      await loanService.loadLoans(_selectedBorrower!.borrowerId!);
+      await loanService.loadAllLoans();
 
       if (!mounted) return;
       // Navigate to Loan Details screen
@@ -666,8 +693,8 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text('1 = daily, 7 = weekly, 30 = monthly, 90 = 3months, 365 = yearly', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                      // const SizedBox(height: 8),
+                      // const Text('1 = daily, 7 = weekly, 30 = monthly, 90 = 3months, 365 = yearly', style: TextStyle(fontSize: 12, color: Colors.black54)),
                     ],
                     const SizedBox(height: 10),
                     Container(
