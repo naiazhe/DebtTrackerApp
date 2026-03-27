@@ -52,16 +52,29 @@ class LoanService extends ChangeNotifier {
     if (payoutAmount <= 0) throw Exception('Payout amount must be greater than 0');
     if (dueDate.isBefore(givenDate)) throw Exception('Due date must not be before given date');
 
-    final totalInterest = Loan.calculateTotalInterest(
+    final totalInterest = Loan(
+      borrowerId: borrowerId,
       loanAmount: loanAmount,
+      payoutAmount: payoutAmount,
+      givenDate: givenDate,
+      dueDate: dueDate,
       hasInterest: hasInterest,
       interestType: interestType,
-      interestRate: interestRate,
-      interestIntervalDays: interestIntervalDays,
-      fixedInterestAmount: fixedInterestAmount,
-    );
+      interestRate: interestType == 'flat' ? interestRate : null,
+      interestIntervalDays: interestType == 'flat' ? interestIntervalDays : null,
+      fixedInterestAmount: interestType == 'fixed' ? fixedInterestAmount : null,
+      collectUpfront: collectUpfront,
+      totalInterest: 0.0, // Placeholder
+      totalPayable: 0.0, // Placeholder
+      totalPaid: 0,
+      remainingBalance: 0.0, // Placeholder
+      status: status,
+      notes: notes,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ).calculateTotalInterest();
 
-    final totalPayable = Loan.calculateTotalPayable(payoutAmount: payoutAmount, totalInterest: totalInterest);
+    final totalPayable = payoutAmount + totalInterest;
 
     final loan = Loan(
       borrowerId: borrowerId,
