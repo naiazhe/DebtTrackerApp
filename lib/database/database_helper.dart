@@ -151,6 +151,16 @@ class DatabaseHelper {
     return null;
   }
 
+  Future<int> updateUserPassword(int userId, String newPassword) async {
+    final db = await database;
+    return await db.update(
+      'users',
+      {'password': newPassword},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
   // Borrower CRUD
   Future<int> createBorrower(Borrower borrower) async {
     final db = await database;

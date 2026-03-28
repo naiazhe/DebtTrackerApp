@@ -7,7 +7,6 @@ import '../services/loan_service.dart';
 import '../services/user_service.dart';
 import '../screens/borrower_detail_screen.dart';
 import '../screens/add_borrower_screen.dart';
-import '../widgets/loading_widget.dart';
 
 class BorrowerScreen extends StatefulWidget {
   const BorrowerScreen({Key? key}) : super(key: key);
@@ -61,40 +60,57 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
 
     final groupedBorrowers = _groupBorrowersByInitial(filteredBorrowers);
 
-    if (borrowerService.isLoading || loanService.isLoading) {
-      return const LoadingWidget(message: 'Loading borrowers...');
-    }
+    final isLoading = borrowerService.isLoading || loanService.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Borrowers', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: Color(0xFF0070A8)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF0070A8)),
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddBorrowerScreen()),
-              );
-              if (mounted) {
-                await _loadData();
-              }
-            },
-            tooltip: 'Add Borrower',
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
-        ],
+          child: AppBar(
+            title: const Text('Borrowers', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Color(0xFF0070A8)),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF0070A8)),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddBorrowerScreen()),
+                  );
+                  if (mounted) {
+                    await _loadData();
+                  }
+                },
+                tooltip: 'Add Borrower',
+              ),
+            ],
+          ),
+        ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+              child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -116,42 +132,43 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: groupedBorrowers.isEmpty
-                    ? const Center(child: Text('No borrowers found.'))
-                    : ListView.builder(
-                        itemCount: groupedBorrowers.length,
-                        itemBuilder: (context, index) {
-                          final entry = groupedBorrowers[index];
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  entry.$1,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF00273B),
-                                  ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: groupedBorrowers.isEmpty
+                ? (isLoading ? const SizedBox.shrink() : const Center(child: Text('No borrowers found.')))
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                      itemCount: groupedBorrowers.length,
+                      itemBuilder: (context, index) {
+                        final entry = groupedBorrowers[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8, left: 0, right: 0),
+                              child: Text(
+                                entry.$1,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF00273B),
                                 ),
                               ),
-                              ...entry.$2.map((borrower) {
-                                final borrowerLoans = loanService.loans.where((loan) => loan.borrowerId == borrower.borrowerId).toList();
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _buildBorrowerCard(borrower, borrowerLoans),
-                                );
-                              }),
-                            ],
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+                            ),
+                            ...entry.$2.map((borrower) {
+                              final borrowerLoans = loanService.loans.where((loan) => loan.borrowerId == borrower.borrowerId).toList();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildBorrowerCard(borrower, borrowerLoans),
+                              );
+                            }),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -233,20 +250,20 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'Loan Status: $status',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _statusColor(status),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
                   'Total Debt: ₱ ${totalDebt.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Loan Status: $status',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _statusColor(status),
                   ),
                 ),
               ],

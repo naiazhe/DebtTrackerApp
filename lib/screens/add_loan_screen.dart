@@ -4,8 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/borrower.dart';
 import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
-import '../services/user_service.dart';
-import 'loan_details_screen.dart';
+import '../services/user_service.dart';import '../utils/message_helpers.dart';import 'loan_details_screen.dart';
 
 class AddLoanScreen extends StatefulWidget {
   final Borrower? initialBorrower;
@@ -294,11 +293,11 @@ class AddLoanScreenState extends State<AddLoanScreen> {
     }
 
     if (_selectedBorrower == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Borrower must be selected')));
+      showInfoMessage(context, 'Borrower must be selected');
       return;
     }
     if (_collectUpfront && _totalInterest > _parseDouble(_loanAmountController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Interest cannot exceed loan amount for upfront deduction')));
+      showErrorMessage(context, 'Interest cannot exceed loan amount for upfront deduction');
       return;
     }
     if (_givenDate == null || _dueDate == null) {
@@ -307,7 +306,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
     }
     final userId = context.read<UserService>().currentUser?.userId;
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      showErrorMessage(context, 'User not logged in');
       return;
     }
 
@@ -361,7 +360,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         notes: _notesController.text.trim(),
       );
 
-      await loanService.addLoanTransaction(userId: userId, borrowerId: _selectedBorrower!.borrowerId!, loanId: createdLoan.loanId!, amount: createdLoan.totalPayable);
+      await loanService.addLoanTransaction(userId: userId, borrowerId: _selectedBorrower!.borrowerId!, loanId: createdLoan.loanId!, amount: createdLoan.loanAmount);
       await loanService.loadAllLoans();
 
       if (!mounted) return;
@@ -373,7 +372,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save loan: $e')));
+        showErrorMessage(context, 'Failed to save loan: $e');
       }
     }
   }
@@ -384,22 +383,41 @@ class AddLoanScreenState extends State<AddLoanScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Add Loan', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(false),
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: const Text('Add Loan', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _submit,
+                child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _submit,
-            child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          )
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -411,50 +429,95 @@ class AddLoanScreenState extends State<AddLoanScreen> {
               children: [
                 _buildSectionHeader('Borrower'),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                  child: DropdownButtonFormField<Borrower>(
-                    initialValue: _selectedBorrower,
-                    hint: const Text('Select Borrower'),
-                    decoration: const InputDecoration(border: InputBorder.none),
-                    items: borrowerService.borrowers
-                        .map((b) => DropdownMenuItem(value: b, child: Text('${b.firstName} ${b.lastName}')))
-                        .toList(),
-                    validator: (value) => value == null ? 'Borrower must be selected' : null,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedBorrower = value;
-                      });
-                    },
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      canvasColor: Colors.white,
+                    ),
+                    child: DropdownButtonFormField<Borrower>(
+                      initialValue: _selectedBorrower,
+                      hint: const Text('Select Borrower'),
+                      style: const TextStyle(color: Colors.black, fontSize: 16),
+                      decoration: InputDecoration(
+                        // labelText: 'Borrower',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8), fontSize: 14),
+                        hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                        prefixIcon: const Icon(Icons.person, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      items: borrowerService.borrowers
+                          .map((b) => DropdownMenuItem(value: b, child: Text('${b.firstName} ${b.lastName}')))
+                          .toList(),
+                      validator: (value) => value == null ? 'Borrower must be selected' : null,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedBorrower = value;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 _buildSectionHeader('Loan Details'),
-                _buildInputCardWithError(
-                  icon: Icons.attach_money,
-                  error: _loanAmountError,
-                  child: TextFormField(
-                    controller: _loanAmountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                    decoration: const InputDecoration(
-                      labelText: 'Loan Amount',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                      errorText: null,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _loanAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                        style: const TextStyle(color: Colors.black),
+                        decoration: InputDecoration(
+                          labelText: 'Loan Amount',
+                          labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                          prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF0070A8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _loanAmountError,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _loanAmountError = _validateLoanAmount(value);
+                          });
+                          _recalculate();
+                        },
+                      ),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _loanAmountError = _validateLoanAmount(value);
-                      });
-                      _recalculate();
-                    },
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -462,33 +525,41 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildInputCard(
-                            icon: Icons.calendar_today,
-                            child: InkWell(
-                              onTap: () => _pickDate(isGivenDate: true),
-                              child: IgnorePointer(
+                          GestureDetector(
+                            onTap: () => _pickDate(isGivenDate: true),
+                            child: AbsorbPointer(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x14000000),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
                                 child: TextFormField(
                                   controller: _givenDateController,
-                                  decoration: const InputDecoration(
+                                  style: const TextStyle(color: Colors.black),
+                                  decoration: InputDecoration(
                                     labelText: 'Give On',
-                                    floatingLabelBehavior: FloatingLabelBehavior.auto,
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                                    errorText: null,
+                                    labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                                    prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF0070A8)),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    errorText: _givenDateError,
                                   ),
                                 ),
                               ),
                             ),
                           ),
                           if (_givenDateError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6, left: 4),
-                              child: Text(
-                                _givenDateError!,
-                                style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),
-                              ),
-                            ),
+                            const SizedBox(height: 6),
                         ],
                       ),
                     ),
@@ -497,39 +568,47 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildInputCard(
-                            icon: Icons.calendar_month,
-                            child: InkWell(
-                              onTap: () => _pickDate(isGivenDate: false),
-                              child: IgnorePointer(
+                          GestureDetector(
+                            onTap: () => _pickDate(isGivenDate: false),
+                            child: AbsorbPointer(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x14000000),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
                                 child: TextFormField(
                                   controller: _dueDateController,
-                                  decoration: const InputDecoration(
+                                  style: const TextStyle(color: Colors.black),
+                                  decoration: InputDecoration(
                                     labelText: 'Due Date',
-                                    floatingLabelBehavior: FloatingLabelBehavior.auto,
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                                    errorText: null,
+                                    labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                                    prefixIcon: const Icon(Icons.calendar_month, color: Color(0xFF0070A8)),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    errorText: _dueDateError,
                                   ),
                                 ),
                               ),
                             ),
                           ),
                           if (_dueDateError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6, left: 4),
-                              child: Text(
-                                _dueDateError!,
-                                style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),
-                              ),
-                            ),
+                            const SizedBox(height: 6),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
 
                 _buildInputCard(
                   icon: Icons.payments,
@@ -543,7 +622,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
                 _buildInputCard(
                   icon: Icons.account_balance_wallet,
                   backgroundColor: const Color(0xFFF2F2F3),
@@ -556,16 +635,31 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                _buildInputCard(
-                  icon: Icons.sticky_note_2,
-                  isFlexible: true,
+                const SizedBox(height: 15),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _notesController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
                       labelText: 'Notes',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                      prefixIcon: const Icon(Icons.sticky_note_2, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                     maxLines: 3,
                   ),
@@ -602,60 +696,102 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                       _interestOptionButton('Fixed Amount', 'fixed'),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
                   if (_interestType == 'flat') ...[
-                    _buildInputCardWithError(
-                      icon: Icons.percent,
-                      error: _interestRateError,
-                      child: TextFormField(
-                        controller: _interestRateController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                        decoration: const InputDecoration(
-                          labelText: 'Interest (%)',
-                          floatingLabelBehavior: FloatingLabelBehavior.auto,
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10),
-                          errorText: null,
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _interestRateError = _validateInterestRate(value);
-                          });
-                          _recalculate();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                          child: DropdownButtonFormField<String>(
-                            value: _interestApplication,
-                            decoration: const InputDecoration(
-                              labelText: 'Applied Every',
-                              border: InputBorder.none,
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: 'one-time', child: Text('One-time')),
-                              DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                              DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')),
-                              DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
-                              DropdownMenuItem(value: 'custom', child: Text('Custom (days)')),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
                             ],
+                          ),
+                          child: TextFormField(
+                            controller: _interestRateController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'Interest (%)',
+                              labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                              prefixIcon: const Icon(Icons.percent, color: Color(0xFF0070A8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _interestRateError,
+                            ),
                             onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _interestApplication = value;
-                                  _interestApplicationError = _validateInterestApplication();
-                                  _recalculate();
-                                });
-                              }
+                              setState(() {
+                                _interestRateError = _validateInterestRate(value);
+                              });
+                              _recalculate();
                             },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              canvasColor: Colors.white,
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: _interestApplication,
+                              style: const TextStyle(color: Colors.black, fontSize: 16),
+                              decoration: InputDecoration(
+                                labelText: 'Applied Every',
+                                labelStyle: const TextStyle(color: Color(0xFF0070A8), fontSize: 14),
+                                hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                                prefixIcon: const Icon(Icons.schedule, color: Color(0xFF0070A8)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'one-time', child: Text('One-time')),
+                                DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                                DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')),
+                                DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                                DropdownMenuItem(value: 'custom', child: Text('Custom (days)')),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _interestApplication = value;
+                                    _interestApplicationError = _validateInterestApplication();
+                                    _recalculate();
+                                  });
+                                }
+                              },
+                            ),
                           ),
                         ),
                         if (_interestApplicationError != null)
@@ -668,30 +804,48 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 15),
                     if (_interestApplication == 'custom') ...[
-                      _buildInputCardWithError(
-                        icon: Icons.calendar_view_day,
-                        error: _intervalError,
-                        child: TextFormField(
-                          controller: _intervalController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: const InputDecoration(
-                            labelText: 'Applied Every (days)',
-                            floatingLabelBehavior: FloatingLabelBehavior.auto,
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
-                            errorText: null,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x14000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextFormField(
+                              controller: _intervalController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(color: Colors.black),
+                              decoration: InputDecoration(
+                                labelText: 'Applied Every (days)',
+                                labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                                prefixIcon: const Icon(Icons.calendar_view_day, color: Color(0xFF0070A8)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                errorText: _intervalError,
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _intervalError = _validateInterval(value);
+                                });
+                                _recalculate();
+                              },
+                            ),
                           ),
-                          onChanged: (value) {
-                            setState(() {
-                              _intervalError = _validateInterval(value);
-                            });
-                            _recalculate();
-                          },
-                        ),
+                        ],
                       ),
                       // const SizedBox(height: 8),
                       // const Text('1 = daily, 7 = weekly, 30 = monthly, 90 = 3months, 365 = yearly', style: TextStyle(fontSize: 12, color: Colors.black54)),
@@ -718,30 +872,48 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                       ),
                     ),
                   ] else ...[
-                    _buildInputCardWithError(
-                      icon: Icons.request_quote,
-                      error: _fixedInterestError,
-                      child: TextFormField(
-                        controller: _fixedInterestController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                        decoration: const InputDecoration(
-                          labelText: 'Interest Amount',
-                          floatingLabelBehavior: FloatingLabelBehavior.auto,
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10),
-                          errorText: null,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextFormField(
+                            controller: _fixedInterestController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'Interest Amount',
+                              labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                              prefixIcon: const Icon(Icons.request_quote, color: Color(0xFF0070A8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _fixedInterestError,
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _fixedInterestError = _validateFixedInterest(value);
+                              });
+                              _recalculate();
+                            },
+                          ),
                         ),
-                        onChanged: (value) {
-                          setState(() {
-                            _fixedInterestError = _validateFixedInterest(value);
-                          });
-                          _recalculate();
-                        },
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 15),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(color: lightColor, borderRadius: BorderRadius.circular(12)),
@@ -768,7 +940,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(_upfrontError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
                   _buildInputCard(
                     icon: Icons.auto_graph,
                     child: Column(
@@ -816,20 +988,24 @@ class AddLoanScreenState extends State<AddLoanScreen> {
   Widget _buildInputCard({required IconData icon, required Widget child, Color backgroundColor = Colors.white, double minHeight = 60, bool isFlexible = false}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: const [
-          BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       constraints: isFlexible ? const BoxConstraints() : BoxConstraints(minHeight: minHeight),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 18, color: normalColor),
-          const SizedBox(width: 8),
+          Icon(icon, size: 20, color: normalColor),
+          const SizedBox(width: 12),
           Expanded(child: child),
         ],
       ),
@@ -849,7 +1025,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
         ),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
+            padding: const EdgeInsets.only(top: 8, left: 4),
             child: Text(
               error,
               style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),

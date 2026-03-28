@@ -81,86 +81,111 @@ class _LoanScreenState extends State<LoanScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Loans', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: Color(0xFF0070A8)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFF0070A8)),
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddLoanScreen()),
-              );
-              await _loadData(); // Reload data after adding a loan
-              setState(() {}); // Refresh after add
-            },
-            tooltip: 'Add Loan',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Segmented control
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6F1F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    _buildTab('Active', 0),
-                    _buildTab('Settled', 1),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Search bar
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x11000000), blurRadius: 2, offset: Offset(0, 1)),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search, color: Color(0xFF0070A8)),
-                    hintText: 'Search Borrower',
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchText = value;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Loan list
-              Expanded(
-                child: filteredLoans.isEmpty
-                    ? const Center(child: Text('No loans found.'))
-                    : ListView.separated(
-                        itemCount: filteredLoans.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final loan = filteredLoans[index];
-                          final borrower = borrowers[loan.borrowerId];
-                          return _buildLoanCard(loan, borrower);
-                        },
-                      ),
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
               ),
             ],
           ),
+          child: AppBar(
+            title: const Text('Loans', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Color(0xFF0070A8)),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.add, color: Color(0xFF0070A8)),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddLoanScreen()),
+                  );
+                  await _loadData(); // Reload data after adding a loan
+                  setState(() {}); // Refresh after add
+                },
+                tooltip: 'Add Loan',
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Segmented control
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE6F1F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab('Active', 0),
+                        _buildTab('Settled', 1),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Search bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x11000000), blurRadius: 2, offset: Offset(0, 1)),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search, color: Color(0xFF0070A8)),
+                        hintText: 'Search Borrower',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchText = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+            // Loan list
+            Expanded(
+              child: filteredLoans.isEmpty
+                  ? const Center(child: Text('No loans found.'))
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                      itemCount: filteredLoans.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final loan = filteredLoans[index];
+                        final borrower = borrowers[loan.borrowerId];
+                        return _buildLoanCard(loan, borrower);
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -235,7 +260,7 @@ class _LoanScreenState extends State<LoanScreen> {
               children: [
                 // Avatar Section
                 CircleAvatar(
-                  backgroundColor: const Color(0xFF00273B),
+                  backgroundColor: const Color(0xFF0070A8),
                   child: Text(
                     initial,
                     style: const TextStyle(
@@ -264,7 +289,9 @@ class _LoanScreenState extends State<LoanScreen> {
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                     Text(
-                      'Balance: ₱ ${loan.remainingBalance.toStringAsFixed(2)}',
+                      _selectedTab == 1
+                          ? 'Paid: ₱ ${(loan.loanAmount - loan.remainingBalance).toStringAsFixed(2)}'
+                          : 'Balance: ₱ ${loan.remainingBalance.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                   ],

@@ -7,26 +7,147 @@ class UserService extends ChangeNotifier {
 
   AppUser? currentUser;
   bool isLoading = false;
+  bool _initialized = false;
 
   Future<void> initialize() async {
+    if (_initialized) return;
+
+    isLoading = true;
+    notifyListeners();
+
+    // App starts on login page until a user logs in.
+    currentUser = null;
+    _initialized = true;
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<String?> login({required String username, required String password}) async {
+    final normalizedUsername = username.trim().toLowerCase();
+
+    if (normalizedUsername.isEmpty || password.isEmpty) {
+      return 'Please enter your username and password.';
+    }
+
     isLoading = true;
     notifyListeners();
 
     final users = await _db.getUsers();
-    if (users.isEmpty) {
-      final created = AppUser(
-        name: 'Default User',
-        email: 'user@example.com',
-        password: 'password',
-        createdAt: DateTime.now(),
-      );
-      await _db.createUser(created);
-      currentUser = (await _db.getUsers()).first;
-    } else {
-      currentUser = users.first;
-    }
+    final matchedUser = users.where((u) {
+      return u.name.trim().toLowerCase() == normalizedUsername && u.password == password;
+    }).cast<AppUser?>().firstWhere((u) => u != null, orElse: () => null);
 
     isLoading = false;
+
+    if (matchedUser == null) {
+      notifyListeners();
+      return 'Invalid username or password.';
+    }
+
+    currentUser = matchedUser;
+    notifyListeners();
+    return null;
+  }
+
+  Future<String?> register({
+    required String username,
+    required String email,
+    required String password,
+  }) async {
+    final normalizedUsername = username.trim();
+    final normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedUsername.isEmpty || normalizedEmail.isEmpty || password.isEmpty) {
+      return 'Please complete all required fields.';
+    }
+
+    if (password.length < 2) {
+      return 'Password must be at least 2 characters.';
+    }
+
+    isLoading = true;
+    notifyListeners();
+
+    final users = await _db.getUsers();
+    final hasSameUsername = users.any((u) => u.name.trim().toLowerCase() == normalizedUsername.toLowerCase());
+    if (hasSameUsername) {
+      isLoading = false;
+      notifyListeners();
+      return 'Username is already taken.';
+    }
+
+    final hasSameEmail = users.any((u) => u.email.trim().toLowerCase() == normalizedEmail);
+    if (hasSameEmail) {
+      isLoading = false;
+      notifyListeners();
+      return 'Email is already registered.';
+    }
+
+    final newUser = AppUser(
+      name: normalizedUsername,
+      email: normalizedEmail,
+      password: password,
+      createdAt: DateTime.now(),
+    );
+
+    final createdId = await _db.createUser(newUser);
+    currentUser = await _db.getUserById(createdId);
+
+    isLoading = false;
+    notifyListeners();
+    return null;
+  }
+
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (currentUser == null) {
+      return 'No active user session.';
+    }
+
+    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+      return 'Please complete all fields.';
+    }
+
+    if (currentPassword != currentUser!.password) {
+      return 'Current password is incorrect.';
+    }
+
+    if (newPassword.length < 2) {
+      return 'New password must be at least 2 characters.';
+    }
+
+    if (newPassword != confirmPassword) {
+      return 'New password and confirmation do not match.';
+    }
+
+    if (newPassword == currentPassword) {
+      return 'New password must be different from current password.';
+    }
+
+    isLoading = true;
+    notifyListeners();
+
+    await _db.updateUserPassword(currentUser!.userId!, newPassword);
+
+    currentUser = AppUser(
+      userId: currentUser!.userId,
+      name: currentUser!.name,
+      email: currentUser!.email,
+      password: newPassword,
+      createdAt: currentUser!.createdAt,
+    );
+
+    isLoading = false;
+    notifyListeners();
+    return null;
+  }
+
+  void logout() {
+    currentUser = null;
     notifyListeners();
   }
 }

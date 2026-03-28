@@ -79,36 +79,55 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Loan Details', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: normalColor),
-            onPressed: () async {
-              final updatedLoan = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => EditLoanScreen(loan: _currentLoan),
-                ),
-              );
-              if (updatedLoan != null && updatedLoan is Loan) {
-                setState(() {
-                  _currentLoan = updatedLoan;
-                });
-                await _loadBorrowerAndPayments();
-              }
-            },
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
-        ],
+          child: AppBar(
+            title: const Text('Loan Details', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: normalColor),
+                onPressed: () async {
+                  final updatedLoan = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => EditLoanScreen(loan: _currentLoan),
+                    ),
+                  );
+                  if (updatedLoan != null && updatedLoan is Loan) {
+                    setState(() {
+                      _currentLoan = updatedLoan;
+                    });
+                    await _loadBorrowerAndPayments();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

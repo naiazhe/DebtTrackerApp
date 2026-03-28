@@ -4,6 +4,7 @@ import '../models/borrower.dart';
 import '../services/borrower_service.dart';
 import '../services/user_service.dart';
 import '../screens/borrower_detail_screen.dart';
+import '../utils/message_helpers.dart';
 
 class AddBorrowerScreen extends StatefulWidget {
   const AddBorrowerScreen({Key? key}) : super(key: key);
@@ -29,12 +30,17 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
   String? _contactError;
   String? _addressError;
   String? _referenceError;
+  bool _hasAttemptedSubmit = false;
 
   void _handleContactFocusChange() {
     if (!mounted || _contactFocusNode.hasFocus) return;
     final borrowers = context.read<BorrowerService>().borrowers;
     setState(() {
-      _contactError = _validateContactNumber(_contactController.text, borrowers);
+      _contactError = _validateContactNumber(
+        _contactController.text,
+        borrowers,
+        showRequired: _hasAttemptedSubmit,
+      );
     });
   }
 
@@ -42,8 +48,15 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
     if (!mounted || _referenceFocusNode.hasFocus) return;
     final borrowers = context.read<BorrowerService>().borrowers;
     setState(() {
-      _referenceError = _validateReferenceContact(_referenceController.text);
-      _contactError = _validateContactNumber(_contactController.text, borrowers);
+      _referenceError = _validateReferenceContact(
+        _referenceController.text,
+        showRequired: _hasAttemptedSubmit,
+      );
+      _contactError = _validateContactNumber(
+        _contactController.text,
+        borrowers,
+        showRequired: _hasAttemptedSubmit,
+      );
     });
   }
 
@@ -125,8 +138,14 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
     return null;
   }
 
-  String? _validateContactNumber(String? value, List<Borrower> existingBorrowers) {
-    if (value == null || value.trim().isEmpty) return 'Contact Number is required';
+  String? _validateContactNumber(
+    String? value,
+    List<Borrower> existingBorrowers, {
+    bool showRequired = false,
+  }) {
+    if (value == null || value.trim().isEmpty) {
+      return showRequired ? 'Contact Number is required' : null;
+    }
     if (!_isValidPhoneNumber(value)) return 'Invalid mobile number. Use +63 or 09 format (e.g., 09123456789)';
     if (!_isContactNumberUnique(value, existingBorrowers)) return 'Contact Number already exists';
     if (_referenceController.text.trim().isNotEmpty && _isSamePhoneNumber(value, _referenceController.text)) {
@@ -140,8 +159,10 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
     return null;
   }
 
-  String? _validateReferenceContact(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Reference Contact Number is required';
+  String? _validateReferenceContact(String? value, {bool showRequired = false}) {
+    if (value == null || value.trim().isEmpty) {
+      return showRequired ? 'Reference Contact Number is required' : null;
+    }
     if (!_isValidPhoneNumber(value)) return 'Invalid mobile number. Use +63 or 09 format (e.g., 09123456789)';
     if (_contactController.text.trim().isNotEmpty && _isSamePhoneNumber(value, _contactController.text)) {
       return 'Contact Number and Reference Contact Number must not be the same';
@@ -168,11 +189,19 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
 
   Future<void> _submit(List<Borrower> existingBorrowers) async {
     setState(() {
+      _hasAttemptedSubmit = true;
       _firstNameError = _validateFirstName(_firstNameController.text);
       _lastNameError = _validateLastName(_lastNameController.text) ?? _validateDuplicateBorrower(existingBorrowers);
-      _contactError = _validateContactNumber(_contactController.text, existingBorrowers);
+      _contactError = _validateContactNumber(
+        _contactController.text,
+        existingBorrowers,
+        showRequired: true,
+      );
       _addressError = _validateAddress(_addressController.text);
-      _referenceError = _validateReferenceContact(_referenceController.text);
+      _referenceError = _validateReferenceContact(
+        _referenceController.text,
+        showRequired: true,
+      );
     });
 
     if (_firstNameError != null || _lastNameError != null || _contactError != null || _addressError != null || _referenceError != null) {
@@ -218,18 +247,12 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
 
       if (!mounted) return;
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Borrower added successfully')),
-      // );
-
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => BorrowerDetailScreen(borrower: createdBorrower)),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save borrower: $e')),
-        );
+        showErrorMessage(context, 'Failed to save borrower: $e');
       }
     }
   }
@@ -240,22 +263,41 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Add Borrower', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(false),
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: const Text('Add Borrower', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => _submit(borrowerService.borrowers),
+                child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => _submit(borrowerService.borrowers),
-            child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          )
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -266,52 +308,94 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionHeader('Personal Information'),
-                _buildInputCard(
-                  icon: Icons.person,
-                  error: _firstNameError,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _firstNameController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
                       labelText: 'First Name',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                      prefixIcon: const Icon(Icons.person, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: _firstNameError,
                     ),
                     onChanged: (_) => _updateNameErrors(borrowerService.borrowers, isLastNameChanged: false),
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildInputCard(
-                  icon: Icons.person_outline,
-                  error: _lastNameError,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _lastNameController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
                       labelText: 'Last Name',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                      prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: _lastNameError,
                     ),
                     onChanged: (_) => _updateNameErrors(borrowerService.borrowers, isLastNameChanged: true),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionHeader('Contact Details'),
-                _buildInputCard(
-                  icon: Icons.phone,
-                  error: _contactError,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _contactController,
                     focusNode: _contactFocusNode,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
                       labelText: 'Contact Number',
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
                       hintText: 'e.g., 09123456789',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      prefixIcon: const Icon(Icons.phone, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: _contactError,
                     ),
                     onChanged: (_) {
                       if (_contactError != null) {
@@ -323,18 +407,42 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildInputCard(
-                  icon: Icons.location_on,
-                  error: _addressError,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _addressController,
                     maxLines: 3,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      alignLabelWithHint: true,
                       labelText: 'Address',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                      prefixIcon: const Align(
+                        alignment: Alignment.topCenter,
+                        widthFactor: 1,
+                        heightFactor: 1,
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Icon(Icons.location_on, color: Color(0xFF0070A8)),
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: _addressError,
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -345,19 +453,33 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildSectionHeader('Reference Contact'),
-                _buildInputCard(
-                  icon: Icons.phone_forwarded,
-                  error: _referenceError,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: TextFormField(
                     controller: _referenceController,
                     focusNode: _referenceFocusNode,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
                       labelText: 'Reference Contact Number',
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
                       hintText: 'e.g., 09123456789',
-                      floatingLabelBehavior: FloatingLabelBehavior.auto,
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      prefixIcon: const Icon(Icons.phone_forwarded, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: _referenceError,
                     ),
                     onChanged: (_) {
                       if (_referenceError != null) {

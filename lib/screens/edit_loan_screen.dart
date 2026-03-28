@@ -5,6 +5,9 @@ import '../models/borrower.dart';
 import '../models/loan.dart';
 import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
+import '../services/user_service.dart';
+import '../utils/message_helpers.dart';
+
 
 class EditLoanScreen extends StatefulWidget {
   final Loan loan;
@@ -333,13 +336,13 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     if (_loanAmountError != null || _givenDateError != null || _dueDateError != null || _interestRateError != null || _fixedInterestError != null || (_interestApplication == 'custom' && _intervalError != null) || _interestApplicationError != null) return;
 
     if (_selectedBorrower == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Borrower must be selected')));
+      showInfoMessage(context, 'Borrower must be selected');
       return;
     }
 
     final loanAmount = _parseDouble(_loanAmountController.text);
     if (_collectUpfront && _totalInterest > loanAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Interest cannot exceed loan amount for upfront deduction')));
+      showErrorMessage(context, 'Interest cannot exceed loan amount for upfront deduction');
       return;
     }
 
@@ -396,7 +399,7 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       Navigator.of(context).pop(updatedLoan);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update loan: $e')));
+        showErrorMessage(context, 'Failed to update loan: $e');
       }
     }
   }
@@ -408,16 +411,35 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Edit Loan', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
-        actions: [
-          IconButton(icon: const Icon(Icons.save, color: normalColor), onPressed: _submit),
-        ],
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: const Text('Edit Loan', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+            leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
+            actions: [
+              IconButton(icon: const Icon(Icons.save, color: normalColor), onPressed: _submit),
+            ],
+          ),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -429,38 +451,90 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
               children: [
                 _buildSectionHeader('Borrower'),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                  child: DropdownButtonFormField<Borrower>(
-                    value: _selectedBorrower,
-                    hint: const Text('Select Borrower'),
-                    decoration: const InputDecoration(border: InputBorder.none),
-                    items: borrowers
-                        .map((b) => DropdownMenuItem(value: b, child: Text('${b.firstName} ${b.lastName}')))
-                        .toList(),
-                    onChanged: (value) => setState(() => _selectedBorrower = value),
-                    validator: (value) => value == null ? 'Borrower must be selected' : null,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      canvasColor: Colors.white,
+                    ),
+                    child: DropdownButtonFormField<Borrower>(
+                      value: _selectedBorrower,
+                      hint: const Text('Select Borrower'),
+                      style: const TextStyle(color: Colors.black, fontSize: 16),
+                      decoration: InputDecoration(
+                        // labelText: 'Borrower',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8), fontSize: 14),
+                        hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                        prefixIcon: const Icon(Icons.person, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      items: borrowers
+                          .map((b) => DropdownMenuItem(value: b, child: Text('${b.firstName} ${b.lastName}')))
+                          .toList(),
+                      onChanged: (value) => setState(() => _selectedBorrower = value),
+                      validator: (value) => value == null ? 'Borrower must be selected' : null,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionHeader('Loan Details'),
-                _buildInputCardWithError(
-                  icon: Icons.attach_money,
-                  error: _loanAmountError,
-                  child: TextFormField(
-                    controller: _loanAmountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                    decoration: const InputDecoration(labelText: 'Loan Amount', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null),
-                    onChanged: (value) {
-                      setState(() {
-                        _loanAmountError = _validateLoanAmount(value);
-                      });
-                      _recalculate();
-                    },
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _loanAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                        style: const TextStyle(color: Colors.black),
+                        decoration: InputDecoration(
+                          labelText: 'Loan Amount',
+                          labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                          prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF0070A8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          errorText: _loanAmountError,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _loanAmountError = _validateLoanAmount(value);
+                          });
+                          _recalculate();
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
                 Row(
                   children: [
                     Expanded(child: _datePickerCard(icon: Icons.calendar_today, controller: _givenDateController, label: 'Give On', isGivenDate: true, errorText: _givenDateError)),
@@ -468,12 +542,39 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
                     Expanded(child: _datePickerCard(icon: Icons.calendar_month, controller: _dueDateController, label: 'Due Date', isGivenDate: false, errorText: _dueDateError)),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
                 _buildInfoCard(icon: Icons.payments, label: 'Payout Amount', value: '₱ ${_payoutAmount.toStringAsFixed(2)}'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 15),
                 _buildInfoCard(icon: Icons.account_balance_wallet, label: 'Total Payable', value: '₱ ${_totalPayable.toStringAsFixed(2)}'),
-                const SizedBox(height: 8),
-                _buildInputCard(icon: Icons.sticky_note_2, isFlexible: true, child: TextFormField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none), maxLines: 3)),
+                const SizedBox(height: 15),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextFormField(
+                    controller: _notesController,
+                    style: const TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Notes',
+                      labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                      prefixIcon: const Icon(Icons.sticky_note_2, color: Color(0xFF0070A8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    maxLines: 3,
+                  ),
+                ),
                 const SizedBox(height: 20),
                 _buildSectionHeader('Interest Details'),
                 Container(
@@ -499,35 +600,102 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
                 if (_hasInterest) ...[
                   const SizedBox(height: 10),
                   Row(children: [ _interestOptionButton('Flat Rate', 'flat'), const SizedBox(width: 8), _interestOptionButton('Fixed Amount', 'fixed') ]),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
                   if (_interestType == 'flat') ...[
-                    _buildInputCardWithError(icon: Icons.percent, error: _interestRateError, child: TextFormField(controller: _interestRateController, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], decoration: const InputDecoration(labelText: 'Interest (%)', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null), onChanged: (value) { setState(() { _interestRateError = _validateInterestRate(value); }); _recalculate(); },)),
-                    const SizedBox(height: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                          child: DropdownButtonFormField<String>(
-                            value: _interestApplication,
-                            decoration: const InputDecoration(labelText: 'Applied Every', border: InputBorder.none),
-                            items: const [
-                              DropdownMenuItem(value: 'one-time', child: Text('One-time')),
-                              DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                              DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')),
-                              DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
-                              DropdownMenuItem(value: 'custom', child: Text('Custom (days)')),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
                             ],
+                          ),
+                          child: TextFormField(
+                            controller: _interestRateController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'Interest (%)',
+                              labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                              prefixIcon: const Icon(Icons.percent, color: Color(0xFF0070A8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _interestRateError,
+                            ),
                             onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _interestApplication = value;
-                                  _interestApplicationError = _validateInterestApplication();
-                                  _recalculate();
-                                });
-                              }
+                              setState(() {
+                                _interestRateError = _validateInterestRate(value);
+                              });
+                              _recalculate();
                             },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              canvasColor: Colors.white,
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: _interestApplication,
+                              style: const TextStyle(color: Colors.black, fontSize: 16),
+                              decoration: InputDecoration(
+                                labelText: 'Applied Every',
+                                labelStyle: const TextStyle(color: Color(0xFF0070A8), fontSize: 14),
+                                hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                                prefixIcon: const Icon(Icons.schedule, color: Color(0xFF0070A8)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'one-time', child: Text('One-time')),
+                                DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                                DropdownMenuItem(value: 'quarterly', child: Text('Quarterly (3 months)')),
+                                DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                                DropdownMenuItem(value: 'custom', child: Text('Custom (days)')),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _interestApplication = value;
+                                    _interestApplicationError = _validateInterestApplication();
+                                    _recalculate();
+                                  });
+                                }
+                              },
+                            ),
                           ),
                         ),
                         if (_interestApplicationError != null)
@@ -540,21 +708,101 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 15),
                     if (_interestApplication == 'custom') ...[
-                      _buildInputCardWithError(icon: Icons.calendar_view_day, error: _intervalError, child: TextFormField(controller: _intervalController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], decoration: const InputDecoration(labelText: 'Applied Every (days)', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null), onChanged: (value) { setState(() { _intervalError = _validateInterval(value); }); _recalculate(); },)),
-                      const SizedBox(height: 8),
-                      const Text('1 = daily, 7 = weekly, 30 = monthly, 90 = 3months, 365 = yearly', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x14000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextFormField(
+                              controller: _intervalController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(color: Colors.black),
+                              decoration: InputDecoration(
+                                labelText: 'Applied Every (days)',
+                                labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                                prefixIcon: const Icon(Icons.calendar_view_day, color: Color(0xFF0070A8)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                errorText: _intervalError,
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _intervalError = _validateInterval(value);
+                                });
+                                _recalculate();
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 15),
+                          const Text('1 = daily, 7 = weekly, 30 = monthly, 90 = 3months, 365 = yearly', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                        ],
+                      ),
                     ],
                     const SizedBox(height: 10),
                     Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: lightColor, borderRadius: BorderRadius.circular(12)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ const Text('Collect full interest upfront'), Switch(value: _collectUpfront, activeThumbColor: normalColor, onChanged: (value) { setState(() { _collectUpfront = value; _recalculate(); }); }), ])),
                   ] else ...[
-                    _buildInputCardWithError(icon: Icons.request_quote, error: _fixedInterestError, child: TextFormField(controller: _fixedInterestController, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))], decoration: const InputDecoration(labelText: 'Interest Amount', floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10), errorText: null), onChanged: (value) { setState(() { _fixedInterestError = _validateFixedInterest(value); }); _recalculate(); })),
-                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextFormField(
+                            controller: _fixedInterestController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            style: const TextStyle(color: Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'Interest Amount',
+                              labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                              prefixIcon: const Icon(Icons.request_quote, color: Color(0xFF0070A8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _fixedInterestError,
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _fixedInterestError = _validateFixedInterest(value);
+                              });
+                              _recalculate();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
                     Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: lightColor, borderRadius: BorderRadius.circular(12)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [ const Text('Collect full interest upfront'), Switch(value: _collectUpfront, activeThumbColor: normalColor, onChanged: (value) { setState(() { _collectUpfront = value; _recalculate(); }); }), ])),
                   ],
                   if (_upfrontError != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_upfrontError!, style: const TextStyle(color: Colors.red, fontSize: 12))),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 15),
                   _buildInfoCard(icon: Icons.auto_graph, label: 'Total Interest', value: '₱ ${_totalInterest.toStringAsFixed(2)}'),
                 ],
               ],
@@ -598,9 +846,9 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputCard(icon: icon, child: InkWell(onTap: () => _pickDate(isGivenDate: isGivenDate), child: IgnorePointer(child: TextFormField(controller: controller, decoration: InputDecoration(labelText: label, floatingLabelBehavior: FloatingLabelBehavior.auto, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10)),),),),),
+        _buildInputCard(icon: icon, child: InkWell(onTap: () => _pickDate(isGivenDate: isGivenDate), child: IgnorePointer(child: TextFormField(controller: controller, style: const TextStyle(color: Colors.black), decoration: InputDecoration(labelText: label, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8)),),),),),
         if (errorText != null)
-          Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(errorText, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500))),
+          Padding(padding: const EdgeInsets.only(top: 8, left: 4), child: Text(errorText, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500))),
       ],
     );
   }
@@ -617,17 +865,31 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
   Widget _buildInputCardWithError({required IconData icon, required Widget child, required String? error, Color backgroundColor = Colors.white, double minHeight = 60, bool isFlexible = false}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _buildInputCard(icon: icon, child: child, backgroundColor: backgroundColor, minHeight: minHeight, isFlexible: isFlexible),
-      if (error != null) Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(error, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500))),
+      if (error != null) Padding(padding: const EdgeInsets.only(top: 8, left: 4), child: Text(error, style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500))),
     ]);
   }
 
   Widget _buildInputCard({required IconData icon, required Widget child, Color backgroundColor = Colors.white, double minHeight = 60, bool isFlexible = false}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(color: backgroundColor, borderRadius: BorderRadius.circular(14), boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))]),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       constraints: isFlexible ? const BoxConstraints() : BoxConstraints(minHeight: minHeight),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [Icon(icon, size: 18, color: normalColor), const SizedBox(width: 8), Expanded(child: child)]),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Icon(icon, size: 20, color: normalColor),
+        const SizedBox(width: 12),
+        Expanded(child: child)
+      ]),
     );
   }
 }

@@ -7,6 +7,7 @@ import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
 import '../services/payment_service.dart';
 import '../services/user_service.dart';
+import '../utils/message_helpers.dart';
 
 class LoanViewScreen extends StatefulWidget {
   final Loan loan;
@@ -133,6 +134,7 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFFF7FBFC),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -279,9 +281,7 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
                           final userId = this.context.read<UserService>().currentUser?.userId;
                           if (userId == null) {
                             if (!mounted) return;
-                            ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(content: Text('User not logged in')),
-                            );
+                            showErrorMessage(this.context, 'User not logged in');
                             return;
                           }
 
@@ -300,17 +300,10 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
                             await _loadBorrowerAndPayments();
 
                             if (!mounted) return;
-                            ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Payment saved successfully'),
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
+                            showSuccessMessage(this.context, 'Payment saved successfully');
                           } catch (e) {
                             if (!mounted) return;
-                            ScaffoldMessenger.of(this.context).showSnackBar(
-                              SnackBar(content: Text('Failed to save payment: $e')),
-                            );
+                            showErrorMessage(this.context, 'Failed to save payment: $e');
                           }
                         },
                         child: const Text('Save Payment'),
@@ -330,12 +323,31 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Loan View', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: AppBar(
+            title: const Text('Loan View', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+          ),
+        ),
       ),
       body: SafeArea(
         child: Column(

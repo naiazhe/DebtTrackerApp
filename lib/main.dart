@@ -10,6 +10,7 @@ import 'screens/borrower_screen.dart';
 import 'screens/loan_screen.dart';
 import 'screens/transaction_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const DebtTrackerApp());
@@ -31,10 +32,50 @@ class DebtTrackerApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Debt Tracker App',
-        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-        home: const MainScreen(),
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF7FBFC),
+        ),
+        home: const AuthGate(),
       ),
     );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({Key? key}) : super(key: key);
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserService>().initialize();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userService = context.watch<UserService>();
+
+    if (userService.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (userService.currentUser == null) {
+      return const LoginScreen();
+    }
+
+    return const MainScreen();
   }
 }
 
@@ -48,14 +89,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = <Widget>[
-    DashboardScreen(),
-    BorrowerScreen(),
-    LoanScreen(),
-    TransactionScreen(),
-    SettingsScreen(),
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -64,10 +97,18 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = <Widget>[
+      DashboardScreen(onNavigateToTab: _onItemTapped),
+      const BorrowerScreen(),
+      const LoanScreen(),
+      const TransactionScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(

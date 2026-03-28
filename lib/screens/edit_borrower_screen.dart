@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrower.dart';
 import '../services/borrower_service.dart';
 import '../services/user_service.dart';
+import '../utils/message_helpers.dart';
 
 class EditBorrowerScreen extends StatefulWidget {
   final Borrower borrower;
@@ -147,9 +148,7 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
       Navigator.of(context).pop(updatedBorrower);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update borrower: $e')),
-      );
+      showErrorMessage(context, 'Failed to update borrower: $e');
     }
   }
 
@@ -159,18 +158,37 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBFC),
-      appBar: AppBar(
-        title: const Text('Edit Borrower', style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: normalColor),
-        actions: [
-          TextButton(
-            onPressed: () => _save(borrowerService.borrowers),
-            child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+      extendBodyBehindAppBar: false,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 5,
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
-        ],
+          child: AppBar(
+            title: const Text('Edit Borrower', style: TextStyle(color: Colors.black)),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            shadowColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: normalColor),
+            actions: [
+              TextButton(
+                onPressed: () => _save(borrowerService.borrowers),
+                child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -179,106 +197,251 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionHeader('Personal Information'),
-              _buildInputCard(
-                icon: Icons.person,
-                error: _firstNameError,
-                child: TextField(
-                  controller: _firstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'First Name',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _firstNameController,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'First Name',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        prefixIcon: const Icon(Icons.person, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _firstNameError,
+                      ),
+                      onChanged: (_) {
+                        if (_firstNameError != null) {
+                          setState(() => _firstNameError = null);
+                        }
+                      },
+                    ),
                   ),
-                  onChanged: (_) {
-                    if (_firstNameError != null) {
-                      setState(() => _firstNameError = null);
-                    }
-                  },
-                ),
+                  if (_firstNameError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_firstNameError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 12),
-              _buildInputCard(
-                icon: Icons.person_outline,
-                error: _lastNameError,
-                child: TextField(
-                  controller: _lastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Last Name',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _lastNameController,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'Last Name',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _lastNameError,
+                      ),
+                      onChanged: (_) {
+                        if (_lastNameError != null) {
+                          setState(() => _lastNameError = null);
+                        }
+                      },
+                    ),
                   ),
-                  onChanged: (_) {
-                    if (_lastNameError != null) {
-                      setState(() => _lastNameError = null);
-                    }
-                  },
-                ),
+                  if (_lastNameError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_lastNameError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 16),
               _buildSectionHeader('Contact Details'),
-              _buildInputCard(
-                icon: Icons.phone,
-                error: _contactError,
-                child: TextField(
-                  controller: _contactController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Number',
-                    hintText: 'e.g., 09123456789',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _contactController,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'Contact Number',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        hintText: 'e.g., 09123456789',
+                        prefixIcon: const Icon(Icons.phone, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _contactError,
+                      ),
+                      onChanged: (_) {
+                        if (_contactError != null) {
+                          setState(() => _contactError = null);
+                        }
+                      },
+                    ),
                   ),
-                  onChanged: (_) {
-                    if (_contactError != null) {
-                      setState(() => _contactError = null);
-                    }
-                  },
-                ),
+                  if (_contactError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_contactError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 12),
-              _buildInputCard(
-                icon: Icons.location_on,
-                error: _addressError,
-                child: TextField(
-                  controller: _addressController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _addressController,
+                      maxLines: 3,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        alignLabelWithHint: true,
+                        labelText: 'Address',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        prefixIcon: const Align(
+                          alignment: Alignment.topCenter,
+                          widthFactor: 1,
+                          heightFactor: 1,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Icon(Icons.location_on, color: Color(0xFF0070A8)),
+                          ),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _addressError,
+                      ),
+                      onChanged: (_) {
+                        if (_addressError != null) {
+                          setState(() => _addressError = null);
+                        }
+                      },
+                    ),
                   ),
-                  onChanged: (_) {
-                    if (_addressError != null) {
-                      setState(() => _addressError = null);
-                    }
-                  },
-                ),
+                  if (_addressError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_addressError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 16),
               _buildSectionHeader('Reference Contact'),
-              _buildInputCard(
-                icon: Icons.phone_forwarded,
-                error: _referenceError,
-                child: TextField(
-                  controller: _referenceController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Reference Contact Number',
-                    hintText: 'e.g., 09123456789',
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _referenceController,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'Reference Contact Number',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        hintText: 'e.g., 09123456789',
+                        prefixIcon: const Icon(Icons.phone_forwarded, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _referenceError,
+                      ),
+                      onChanged: (_) {
+                        if (_referenceError != null) {
+                          setState(() => _referenceError = null);
+                        }
+                      },
+                    ),
                   ),
-                  onChanged: (_) {
-                    if (_referenceError != null) {
-                      setState(() => _referenceError = null);
-                    }
-                  },
-                ),
+                  if (_referenceError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_referenceError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
