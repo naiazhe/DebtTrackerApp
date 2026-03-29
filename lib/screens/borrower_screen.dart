@@ -34,8 +34,8 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
     final userId = userService.currentUser?.userId;
     if (userId != null) {
       await borrowerService.loadBorrowers(userId);
+      await loanService.loadAllLoans(userId);
     }
-    await loanService.loadAllLoans();
   }
 
   @override

@@ -25,7 +25,7 @@ class BorrowerService extends ChangeNotifier {
     await _db.updateBorrower(borrower);
   }
 
-  Future<void> deleteBorrower(int borrowerId) async {
-    await _db.deleteBorrower(borrowerId);
+  Future<void> deleteBorrower(int borrowerId, int userId) async {
+    await _db.deleteBorrower(borrowerId, userId);
   }
 }

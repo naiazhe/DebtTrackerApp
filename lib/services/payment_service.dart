@@ -7,11 +7,11 @@ class PaymentService extends ChangeNotifier {
   List<PaymentEntry> payments = [];
   bool isLoading = false;
 
-  Future<void> loadPayments(int loanId) async {
+  Future<void> loadPayments(int loanId, int userId) async {
     isLoading = true;
     notifyListeners();
 
-    payments = await _db.getPaymentsByLoan(loanId);
+    payments = await _db.getPaymentsByLoanForUser(loanId, userId);
 
     isLoading = false;
     notifyListeners();

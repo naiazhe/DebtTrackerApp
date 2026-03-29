@@ -18,6 +18,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _usernameServerError;
 
   @override
   void dispose() {
@@ -29,6 +30,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Future<void> _submit() async {
+    setState(() {
+      _usernameServerError = null;
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     final userService = context.read<UserService>();
@@ -41,6 +46,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (!mounted) return;
 
     if (error != null) {
+      if (error == 'Username is already taken.') {
+        setState(() {
+          _usernameServerError = error;
+        });
+        return;
+      }
       showErrorMessage(context, error);
       return;
     }
@@ -101,7 +112,15 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   TextFormField(
                     controller: _usernameController,
                     textInputAction: TextInputAction.next,
-                    decoration: _inputDecoration(label: 'Username', icon: Icons.person),
+                    decoration: _inputDecoration(label: 'Username', icon: Icons.person)
+                        .copyWith(errorText: _usernameServerError),
+                    onChanged: (_) {
+                      if (_usernameServerError != null) {
+                        setState(() {
+                          _usernameServerError = null;
+                        });
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Username is required';

@@ -319,6 +319,12 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
   }
 
   Future<void> _submit() async {
+    final userId = context.read<UserService>().currentUser?.userId;
+    if (userId == null) {
+      showErrorMessage(context, 'User not logged in');
+      return;
+    }
+
     setState(() {
       _loanAmountError = _validateLoanAmount(_loanAmountController.text);
       _givenDateError = _validateGivenDate(_givenDateController.text);
@@ -394,8 +400,9 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
     );
 
     try {
-      await loanService.updateLoan(updatedLoan);
+      await loanService.updateLoan(updatedLoan, userId);
       if (!mounted) return;
+      showSuccessMessage(context, 'Loan updated successfully');
       Navigator.of(context).pop(updatedLoan);
     } catch (e) {
       if (mounted) {

@@ -389,6 +389,7 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
                       labelStyle: const TextStyle(color: Color(0xFF0070A8)),
                       hintText: 'e.g., 09123456789',
                       prefixIcon: const Icon(Icons.phone, color: Color(0xFF0070A8)),
+                      errorMaxLines: 3,
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -473,6 +474,7 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
                       labelStyle: const TextStyle(color: Color(0xFF0070A8)),
                       hintText: 'e.g., 09123456789',
                       prefixIcon: const Icon(Icons.phone_forwarded, color: Color(0xFF0070A8)),
+                      errorMaxLines: 3,
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(

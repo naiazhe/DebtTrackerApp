@@ -188,12 +188,21 @@ class DatabaseHelper {
 
   Future<int> updateBorrower(Borrower borrower) async {
     final db = await database;
-    return await db.update('borrowers', borrower.toMap(), where: 'borrower_id = ?', whereArgs: [borrower.borrowerId]);
+    return await db.update(
+      'borrowers',
+      borrower.toMap(),
+      where: 'borrower_id = ? AND user_id = ?',
+      whereArgs: [borrower.borrowerId, borrower.userId],
+    );
   }
 
-  Future<int> deleteBorrower(int borrowerId) async {
+  Future<int> deleteBorrower(int borrowerId, int userId) async {
     final db = await database;
-    return await db.delete('borrowers', where: 'borrower_id = ?', whereArgs: [borrowerId]);
+    return await db.delete(
+      'borrowers',
+      where: 'borrower_id = ? AND user_id = ?',
+      whereArgs: [borrowerId, userId],
+    );
   }
 
   // Loan CRUD
@@ -208,27 +217,74 @@ class DatabaseHelper {
     return maps.map((m) => Loan.fromMap(m)).toList();
   }
 
-  Future<Loan?> getLoanById(int id) async {
+  Future<Loan?> getLoanByIdForUser(int id, int userId) async {
     final db = await database;
-    final maps = await db.query('loans', where: 'loan_id = ?', whereArgs: [id]);
+    final maps = await db.rawQuery(
+      '''
+      SELECT l.*
+      FROM loans l
+      INNER JOIN borrowers b ON b.borrower_id = l.borrower_id
+      WHERE l.loan_id = ? AND b.user_id = ?
+      LIMIT 1
+      ''',
+      [id, userId],
+    );
     if (maps.isNotEmpty) return Loan.fromMap(maps.first);
     return null;
   }
 
-  Future<List<Loan>> getAllLoans() async {
+  Future<List<Loan>> getAllLoansByUser(int userId) async {
     final db = await database;
-    final maps = await db.query('loans', orderBy: 'created_at DESC');
+    final maps = await db.rawQuery(
+      '''
+      SELECT l.*
+      FROM loans l
+      INNER JOIN borrowers b ON b.borrower_id = l.borrower_id
+      WHERE b.user_id = ?
+      ORDER BY l.created_at DESC
+      ''',
+      [userId],
+    );
     return maps.map((m) => Loan.fromMap(m)).toList();
   }
 
-  Future<int> updateLoan(Loan loan) async {
+  Future<int> updateLoanForUser(Loan loan, int userId) async {
     final db = await database;
-    return await db.update('loans', loan.toMap(), where: 'loan_id = ?', whereArgs: [loan.loanId]);
+    return await db.update(
+      'loans',
+      loan.toMap(),
+      where: '''
+        loan_id = ? AND borrower_id IN (
+          SELECT borrower_id FROM borrowers WHERE user_id = ?
+        )
+      ''',
+      whereArgs: [loan.loanId, userId],
+    );
   }
 
-  Future<int> deleteLoan(int loanId) async {
+  Future<int> deleteLoanForUser(int loanId, int userId) async {
     final db = await database;
-    return await db.delete('loans', where: 'loan_id = ?', whereArgs: [loanId]);
+    return await db.delete(
+      'loans',
+      where: '''
+        loan_id = ? AND borrower_id IN (
+          SELECT borrower_id FROM borrowers WHERE user_id = ?
+        )
+      ''',
+      whereArgs: [loanId, userId],
+    );
+  }
+
+  Future<bool> isBorrowerOwnedByUser(int borrowerId, int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      'borrowers',
+      columns: ['borrower_id'],
+      where: 'borrower_id = ? AND user_id = ?',
+      whereArgs: [borrowerId, userId],
+      limit: 1,
+    );
+    return maps.isNotEmpty;
   }
 
   // Payment CRUD
@@ -237,9 +293,19 @@ class DatabaseHelper {
     return await db.insert('payments', payment.toMap());
   }
 
-  Future<List<PaymentEntry>> getPaymentsByLoan(int loanId) async {
+  Future<List<PaymentEntry>> getPaymentsByLoanForUser(int loanId, int userId) async {
     final db = await database;
-    final maps = await db.query('payments', where: 'loan_id = ?', whereArgs: [loanId], orderBy: 'payment_date DESC');
+    final maps = await db.rawQuery(
+      '''
+      SELECT p.*
+      FROM payments p
+      INNER JOIN loans l ON l.loan_id = p.loan_id
+      INNER JOIN borrowers b ON b.borrower_id = l.borrower_id
+      WHERE p.loan_id = ? AND b.user_id = ?
+      ORDER BY p.payment_date DESC
+      ''',
+      [loanId, userId],
+    );
     return maps.map((m) => PaymentEntry.fromMap(m)).toList();
   }
 
@@ -249,9 +315,14 @@ class DatabaseHelper {
     return await db.insert('transactions', transaction.toMap());
   }
 
-  Future<List<TransactionRecord>> getTransactions() async {
+  Future<List<TransactionRecord>> getTransactionsByUser(int userId) async {
     final db = await database;
-    final maps = await db.query('transactions', orderBy: 'transaction_date DESC');
+    final maps = await db.query(
+      'transactions',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'transaction_date DESC',
+    );
     return maps.map((m) => TransactionRecord.fromMap(m)).toList();
   }
 

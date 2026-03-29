@@ -37,6 +37,8 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
   Future<void> _loadBorrowerAndPayments() async {
     final borrowerService = context.read<BorrowerService>();
     final paymentService = context.read<PaymentService>();
+    final userId = context.read<UserService>().currentUser?.userId;
+    if (userId == null) return;
 
     final borrower = borrowerService.borrowers.firstWhere(
       (b) => b.borrowerId == _currentLoan.borrowerId,
@@ -52,7 +54,7 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
       ),
     );
 
-    await paymentService.loadPayments(_currentLoan.loanId ?? 0);
+    await paymentService.loadPayments(_currentLoan.loanId ?? 0, userId);
     final payments = paymentService.payments;
 
     if (!mounted) return;
@@ -65,8 +67,10 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
   Future<void> _refreshCurrentLoan() async {
     final loanId = _currentLoan.loanId;
     if (loanId == null) return;
+    final userId = context.read<UserService>().currentUser?.userId;
+    if (userId == null) return;
     final loanService = context.read<LoanService>();
-    final refreshed = await loanService.getLoanById(loanId);
+    final refreshed = await loanService.getLoanById(loanId, userId);
     if (!mounted || refreshed == null) return;
     setState(() {
       _currentLoan = refreshed;
@@ -346,6 +350,13 @@ class _LoanViewScreenState extends State<LoanViewScreen> {
             scrolledUnderElevation: 0,
             shadowColor: Colors.transparent,
             iconTheme: const IconThemeData(color: normalColor),
+            actions: [
+              IconButton(
+                tooltip: 'Collect Payment',
+                icon: const Icon(Icons.payments_rounded, color: normalColor),
+                onPressed: _currentLoan.status == 'settled' ? null : _showCollectPaymentModal,
+              ),
+            ],
           ),
         ),
       ),

@@ -63,7 +63,7 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final userService = context.watch<UserService>();
 
-    if (userService.isLoading) {
+    if (!userService.isInitialized) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
@@ -138,11 +138,11 @@ class _MainScreenState extends State<MainScreen> {
             selectedFontSize: 13,
             unselectedFontSize: 12,
             items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
               BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Borrower'),
               BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Loan'),
               BottomNavigationBarItem(icon: Icon(Icons.monetization_on), label: 'Transaction'),
-              BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+              BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
             ],
           ),
         ),

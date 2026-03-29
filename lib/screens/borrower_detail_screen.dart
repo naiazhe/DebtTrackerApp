@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrower.dart';
 import '../models/loan.dart';
 import '../services/loan_service.dart';
+import '../services/user_service.dart';
 import 'edit_borrower_screen.dart';
 import 'loan_view_screen.dart';
 import '../utils/message_helpers.dart';
@@ -94,7 +95,10 @@ class _BorrowerDetailScreenState extends State<BorrowerDetailScreen> {
           MaterialPageRoute(builder: (_) => LoanViewScreen(loan: loan)),
         );
         if (!mounted) return;
-        await context.read<LoanService>().loadAllLoans();
+        final userId = context.read<UserService>().currentUser?.userId;
+        if (userId != null) {
+          await context.read<LoanService>().loadAllLoans(userId);
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),

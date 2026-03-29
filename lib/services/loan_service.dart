@@ -19,21 +19,22 @@ class LoanService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadAllLoans() async {
+  Future<void> loadAllLoans(int userId) async {
     isLoading = true;
     notifyListeners();
 
-    loans = await _db.getAllLoans();
+    loans = await _db.getAllLoansByUser(userId);
 
     isLoading = false;
     notifyListeners();
   }
 
-  Future<Loan?> getLoanById(int loanId) async {
-    return await _db.getLoanById(loanId);
+  Future<Loan?> getLoanById(int loanId, int userId) async {
+    return await _db.getLoanByIdForUser(loanId, userId);
   }
 
   Future<Loan> createLoan({
+    required int userId,
     required int borrowerId,
     required double loanAmount,
     required double payoutAmount,
@@ -52,6 +53,11 @@ class LoanService extends ChangeNotifier {
     if (loanAmount <= 0) throw Exception('Loan amount must be greater than 0');
     if (payoutAmount <= 0) throw Exception('Payout amount must be greater than 0');
     if (dueDate.isBefore(givenDate)) throw Exception('Due date must not be before given date');
+
+    final borrowerOwnedByUser = await _db.isBorrowerOwnedByUser(borrowerId, userId);
+    if (!borrowerOwnedByUser) {
+      throw Exception('Unauthorized borrower access');
+    }
 
     final totalInterest = Loan(
       borrowerId: borrowerId,
@@ -120,10 +126,11 @@ class LoanService extends ChangeNotifier {
     return await _db.createTransaction(transaction);
   }
 
-  Future<void> updateLoan(Loan loan) async {
+  Future<void> updateLoan(Loan loan, int userId) async {
     if (loan.loanId == null) throw Exception('Loan ID is required for update');
-    await _db.updateLoan(loan);
-    await loadAllLoans();
+    final updatedCount = await _db.updateLoanForUser(loan, userId);
+    if (updatedCount == 0) throw Exception('Loan not found or unauthorized access');
+    await loadAllLoans(userId);
   }
 
   Future<void> registerPayment({
@@ -163,7 +170,8 @@ class LoanService extends ChangeNotifier {
       updatedAt: DateTime.now(),
     );
 
-    await _db.updateLoan(updatedLoan);
+    final updatedCount = await _db.updateLoanForUser(updatedLoan, userId);
+    if (updatedCount == 0) throw Exception('Loan not found or unauthorized access');
 
     final payment = PaymentEntry(
       loanId: loan.loanId!,
@@ -184,6 +192,6 @@ class LoanService extends ChangeNotifier {
     );
     await _db.createTransaction(transaction);
 
-    await loadAllLoans();
+    await loadAllLoans(userId);
   }
 }

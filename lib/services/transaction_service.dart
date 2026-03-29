@@ -7,11 +7,11 @@ class TransactionService extends ChangeNotifier {
   List<TransactionRecord> transactions = [];
   bool isLoading = false;
 
-  Future<void> loadTransactions() async {
+  Future<void> loadTransactions(int userId) async {
     isLoading = true;
     notifyListeners();
 
-    transactions = await _db.getTransactions();
+    transactions = await _db.getTransactionsByUser(userId);
 
     isLoading = false;
     notifyListeners();

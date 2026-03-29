@@ -5,6 +5,7 @@ import '../models/loan.dart';
 import '../models/payment.dart' as payment_model;
 import '../services/borrower_service.dart';
 import '../services/payment_service.dart';
+import '../services/user_service.dart';
 import 'edit_loan_screen.dart';
 
 class LoanDetailsScreen extends StatefulWidget {
@@ -36,6 +37,8 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
   Future<void> _loadBorrowerAndPayments() async {
     final borrowerService = context.read<BorrowerService>();
     final paymentService = context.read<PaymentService>();
+    final userId = context.read<UserService>().currentUser?.userId;
+    if (userId == null) return;
 
     final borrower = borrowerService.borrowers.firstWhere(
       (b) => b.borrowerId == _currentLoan.borrowerId,
@@ -51,7 +54,7 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
       ),
     );
 
-    await paymentService.loadPayments(_currentLoan.loanId ?? 0);
+    await paymentService.loadPayments(_currentLoan.loanId ?? 0, userId);
     final payments = paymentService.payments;
 
     if (!mounted) return;

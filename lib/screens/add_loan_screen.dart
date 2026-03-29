@@ -345,6 +345,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
 
     try {
       final createdLoan = await loanService.createLoan(
+        userId: userId,
         borrowerId: _selectedBorrower!.borrowerId!,
         loanAmount: loanAmount,
         payoutAmount: payoutAmount,
@@ -361,7 +362,7 @@ class AddLoanScreenState extends State<AddLoanScreen> {
       );
 
       await loanService.addLoanTransaction(userId: userId, borrowerId: _selectedBorrower!.borrowerId!, loanId: createdLoan.loanId!, amount: createdLoan.loanAmount);
-      await loanService.loadAllLoans();
+      await loanService.loadAllLoans(userId);
 
       if (!mounted) return;
       // Navigate to Loan Details screen

@@ -32,9 +32,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final userId = userService.currentUser?.userId;
     if (userId != null) {
       await borrowerService.loadBorrowers(userId);
+      await transactionService.loadTransactions(userId);
     }
-
-    await transactionService.loadTransactions();
     _lastRefreshAt = DateTime.now();
   }
 

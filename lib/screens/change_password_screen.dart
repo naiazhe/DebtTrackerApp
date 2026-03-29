@@ -15,6 +15,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  String? _currentPasswordServerError;
 
   bool _obscureCurrent = true;
   bool _obscureNew = true;
@@ -29,6 +30,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
+    setState(() {
+      _currentPasswordServerError = null;
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     final userService = context.read<UserService>();
@@ -41,6 +46,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!mounted) return;
 
     if (error != null) {
+      if (error == 'Current password is incorrect.') {
+        setState(() {
+          _currentPasswordServerError = error;
+        });
+        return;
+      }
       showErrorMessage(context, error);
       return;
     }
@@ -106,6 +117,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     controller: _currentPasswordController,
                     obscureText: _obscureCurrent,
                     textInputAction: TextInputAction.next,
+                    onChanged: (_) {
+                      if (_currentPasswordServerError != null) {
+                        setState(() {
+                          _currentPasswordServerError = null;
+                        });
+                      }
+                    },
                     decoration: _inputDecoration(
                       label: 'Current Password',
                       icon: Icons.lock,
@@ -115,7 +133,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           _obscureCurrent = !_obscureCurrent;
                         });
                       },
-                    ),
+                    ).copyWith(errorText: _currentPasswordServerError),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Current password is required';
@@ -142,8 +160,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       if (value == null || value.isEmpty) {
                         return 'New password is required';
                       }
-                      if (value.length < 2) {
-                        return 'New password must be at least 2 characters';
+                      if (value.length < 8) {
+                        return 'New password must be at least 8 characters';
                       }
                       return null;
                     },

@@ -16,6 +16,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _hasAttemptedSubmit = false;
+  String? _usernameAuthError;
+  String? _passwordAuthError;
 
   @override
   void dispose() {
@@ -25,7 +28,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _hasAttemptedSubmit = true;
+      _usernameAuthError = null;
+      _passwordAuthError = null;
+    });
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     final userService = context.read<UserService>();
     final error = await userService.login(
@@ -36,8 +47,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (error != null) {
-      showErrorMessage(context, error);
+      final lowerError = error.toLowerCase();
+      setState(() {
+        if (lowerError.contains('username') && !lowerError.contains('password')) {
+          _usernameAuthError = error;
+        } else if (lowerError.contains('password') && !lowerError.contains('username')) {
+          _passwordAuthError = error;
+        } else {
+          // Fallback for generic credential errors: show under both fields.
+          _usernameAuthError = error;
+          _passwordAuthError = error;
+        }
+      });
+      return;
     }
+
+    showSuccessMessage(context, 'Login successful.');
   }
 
   @override
@@ -91,10 +116,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: TextFormField(
                               controller: _usernameController,
                               textInputAction: TextInputAction.next,
+                              onChanged: (_) {
+                                if (_usernameAuthError != null) {
+                                  setState(() {
+                                    _usernameAuthError = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Username',
                                 labelStyle: const TextStyle(color: Color(0xFF0070A8)),
                                 prefixIcon: const Icon(Icons.person, color: Color(0xFF0070A8)),
+                                errorText: _usernameAuthError,
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
@@ -103,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
+                                if (_hasAttemptedSubmit && (value == null || value.trim().isEmpty)) {
                                   return 'Username is required';
                                 }
                                 return null;
@@ -125,6 +158,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
+                              onChanged: (_) {
+                                if (_passwordAuthError != null) {
+                                  setState(() {
+                                    _passwordAuthError = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Password',
                                 labelStyle: const TextStyle(color: Color(0xFF0070A8)),
@@ -140,6 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     });
                                   },
                                 ),
+                                errorText: _passwordAuthError,
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
@@ -148,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (_hasAttemptedSubmit && (value == null || value.isEmpty)) {
                                   return 'Password is required';
                                 }
                                 return null;

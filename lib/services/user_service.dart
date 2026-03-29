@@ -9,6 +9,8 @@ class UserService extends ChangeNotifier {
   bool isLoading = false;
   bool _initialized = false;
 
+  bool get isInitialized => _initialized;
+
   Future<void> initialize() async {
     if (_initialized) return;
 
@@ -34,18 +36,23 @@ class UserService extends ChangeNotifier {
     notifyListeners();
 
     final users = await _db.getUsers();
-    final matchedUser = users.where((u) {
-      return u.name.trim().toLowerCase() == normalizedUsername && u.password == password;
+    final matchedByUsername = users.where((u) {
+      return u.name.trim().toLowerCase() == normalizedUsername;
     }).cast<AppUser?>().firstWhere((u) => u != null, orElse: () => null);
 
     isLoading = false;
 
-    if (matchedUser == null) {
+    if (matchedByUsername == null) {
       notifyListeners();
-      return 'Invalid username or password.';
+      return 'Invalid username.';
     }
 
-    currentUser = matchedUser;
+    if (matchedByUsername.password != password) {
+      notifyListeners();
+      return 'Invalid password.';
+    }
+
+    currentUser = matchedByUsername;
     notifyListeners();
     return null;
   }
@@ -116,8 +123,8 @@ class UserService extends ChangeNotifier {
       return 'Current password is incorrect.';
     }
 
-    if (newPassword.length < 2) {
-      return 'New password must be at least 2 characters.';
+    if (newPassword.length < 8) {
+      return 'New password must be at least 8 characters.';
     }
 
     if (newPassword != confirmPassword) {
