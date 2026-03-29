@@ -6,12 +6,18 @@ import '../models/payment.dart' as payment_model;
 import '../services/borrower_service.dart';
 import '../services/payment_service.dart';
 import '../services/user_service.dart';
+import '../utils/message_helpers.dart';
 import 'edit_loan_screen.dart';
 
 class LoanDetailsScreen extends StatefulWidget {
   final Loan loan;
+  final bool showCreatedSuccess;
 
-  const LoanDetailsScreen({Key? key, required this.loan}) : super(key: key);
+  const LoanDetailsScreen({
+    Key? key,
+    required this.loan,
+    this.showCreatedSuccess = false,
+  }) : super(key: key);
 
   @override
   State<LoanDetailsScreen> createState() => LoanDetailsScreenState();
@@ -31,6 +37,14 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
   void initState() {
     super.initState();
     _currentLoan = widget.loan;
+
+    if (widget.showCreatedSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showSuccessMessage(context, 'Loan added successfully');
+      });
+    }
+
     _loadBorrowerAndPayments();
   }
 
@@ -48,7 +62,9 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
         lastName: 'Borrower',
         contactNumber: '',
         address: '',
+        referenceName: '',
         referenceContact: '',
+        referenceRelationship: '',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
@@ -387,11 +403,11 @@ class LoanDetailsScreenState extends State<LoanDetailsScreen> {
     if (interval == null || interval <= 0) {
       return 'One-Time';
     } else if (unit == 'months' && interval == 1) {
-      return '1 month';
+      return 'Monthly';
     } else if (unit == 'months' && interval == 3) {
-      return '3 months';
+      return 'Quarterly (3 months)';
     } else if (unit == 'months' && interval == 12) {
-      return '1 year';
+      return 'Yearly';
     } else if (unit == 'days') {
       return '$interval days';
     } else {

@@ -4,14 +4,20 @@ import '../models/borrower.dart';
 import '../models/loan.dart';
 import '../services/loan_service.dart';
 import '../services/user_service.dart';
+import 'add_loan_screen.dart';
 import 'edit_borrower_screen.dart';
 import 'loan_view_screen.dart';
 import '../utils/message_helpers.dart';
 
 class BorrowerDetailScreen extends StatefulWidget {
   final Borrower borrower;
+  final bool showCreatedSuccess;
 
-  const BorrowerDetailScreen({Key? key, required this.borrower}) : super(key: key);
+  const BorrowerDetailScreen({
+    Key? key,
+    required this.borrower,
+    this.showCreatedSuccess = false,
+  }) : super(key: key);
 
   @override
   State<BorrowerDetailScreen> createState() => _BorrowerDetailScreenState();
@@ -24,6 +30,13 @@ class _BorrowerDetailScreenState extends State<BorrowerDetailScreen> {
   void initState() {
     super.initState();
     _borrower = widget.borrower;
+
+    if (widget.showCreatedSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showSuccessMessage(context, 'Borrower added successfully');
+      });
+    }
   }
 
   Future<void> _openEditScreen() async {
@@ -38,6 +51,20 @@ class _BorrowerDetailScreenState extends State<BorrowerDetailScreen> {
       _borrower = updatedBorrower;
     });
     showSuccessMessage(context, 'Borrower updated successfully');
+  }
+
+  Future<void> _openAddLoanScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddLoanScreen(initialBorrower: _borrower),
+      ),
+    );
+
+    if (!mounted) return;
+    final userId = context.read<UserService>().currentUser?.userId;
+    if (userId != null) {
+      await context.read<LoanService>().loadAllLoans(userId);
+    }
   }
 
   String _formatDate(DateTime value) {
@@ -243,17 +270,37 @@ class _BorrowerDetailScreenState extends State<BorrowerDetailScreen> {
               const SizedBox(height: 16),
               _buildInfoTile(icon: Icons.phone, label: 'Contact Number', value: _borrower.contactNumber),
               _buildInfoTile(icon: Icons.location_on, label: 'Address', value: _borrower.address),
+              _buildInfoTile(
+                icon: Icons.badge,
+                label: 'Reference Name',
+                value: _borrower.referenceName.trim().isEmpty ? 'Not set' : _borrower.referenceName,
+              ),
+              _buildInfoTile(
+                icon: Icons.diversity_3,
+                label: 'Relationship',
+                value: _borrower.referenceRelationship.trim().isEmpty ? 'Not set' : _borrower.referenceRelationship,
+              ),
               _buildInfoTile(icon: Icons.phone_forwarded, label: 'Reference Contact', value: _borrower.referenceContact),
               _buildInfoTile(icon: Icons.calendar_today, label: 'Created At', value: _formatDate(_borrower.createdAt)),
               _buildInfoTile(icon: Icons.update, label: 'Updated At', value: _formatDate(_borrower.updatedAt)),
               const SizedBox(height: 8),
-              const Text(
-                'Loans',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF00273B),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Loans',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF00273B),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _openAddLoanScreen,
+                    tooltip: 'Add Loan',
+                    icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0070A8)),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               borrowerLoans.isEmpty

@@ -368,7 +368,10 @@ class AddLoanScreenState extends State<AddLoanScreen> {
       // Navigate to Loan Details screen
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => LoanDetailsScreen(loan: createdLoan),
+          builder: (context) => LoanDetailsScreen(
+            loan: createdLoan,
+            showCreatedSuccess: true,
+          ),
         ),
       );
     } catch (e) {

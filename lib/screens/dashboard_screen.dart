@@ -6,7 +6,6 @@ import '../services/borrower_service.dart';
 import '../services/loan_service.dart';
 import '../services/transaction_service.dart';
 import '../services/user_service.dart';
-import '../widgets/loading_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateToTab;
@@ -91,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 3),
                 Text(
                   'Due: ${loan.dueDate.year}-${loan.dueDate.month.toString().padLeft(2, '0')}-${loan.dueDate.day.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -182,14 +181,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userService = context.watch<UserService>();
     final borrowerService = context.watch<BorrowerService>();
     final loanService = context.watch<LoanService>();
     final transactionService = context.watch<TransactionService>();
-
-    if (userService.isLoading || borrowerService.isLoading || loanService.isLoading || transactionService.isLoading) {
-      return const LoadingWidget(message: 'Loading dashboard...');
-    }
 
     final loans = loanService.loans;
     final transactions = transactionService.transactions;

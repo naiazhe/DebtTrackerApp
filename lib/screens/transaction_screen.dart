@@ -180,6 +180,66 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
+  List<Widget> _buildGroupedSlivers(
+    List<(DateTime, List<TransactionRecord>)> grouped,
+    Map<int, String> borrowerMap,
+  ) {
+    final slivers = <Widget>[
+      const SliverToBoxAdapter(child: SizedBox(height: 6)),
+    ];
+
+    for (final group in grouped) {
+      final date = group.$1;
+      final records = group.$2;
+
+      slivers.add(
+        SliverMainAxisGroup(
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _DateHeaderDelegate(
+                minExtent: 44,
+                maxExtent: 44,
+                child: Container(
+                  color: const Color(0xFFF7FBFC),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _formatDateHeader(date),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0070A8),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final tx = records[index];
+                    final borrowerName = borrowerMap[tx.borrowerId] ?? 'Borrower ${tx.borrowerId}';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildTransactionCard(tx, borrowerName),
+                    );
+                  },
+                  childCount: records.length,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 16)));
+    return slivers;
+  }
+
   @override
   Widget build(BuildContext context) {
     final borrowerService = context.watch<BorrowerService>();
@@ -256,39 +316,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       ? const Center(child: Text('No transactions yet.'))
                       : RefreshIndicator(
                           onRefresh: _loadData,
-                          child: ListView.builder(
+                          child: CustomScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-                            itemCount: grouped.length,
-                            itemBuilder: (context, index) {
-                              final group = grouped[index];
-                              final date = group.$1;
-                              final records = group.$2;
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 10, bottom: 10),
-                                    child: Text(
-                                      _formatDateHeader(date),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF0070A8),
-                                      ),
-                                    ),
-                                  ),
-                                  ...records.map((tx) {
-                                    final borrowerName = borrowerMap[tx.borrowerId] ?? 'Borrower ${tx.borrowerId}';
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 10),
-                                      child: _buildTransactionCard(tx, borrowerName),
-                                    );
-                                  }),
-                                ],
-                              );
-                            },
+                            slivers: _buildGroupedSlivers(grouped, borrowerMap),
                           ),
                         ),
             ),
@@ -296,5 +326,31 @@ class _TransactionScreenState extends State<TransactionScreen> {
         ),
       ),
     );
+  }
+}
+
+class _DateHeaderDelegate extends SliverPersistentHeaderDelegate {
+  @override
+  final double minExtent;
+  @override
+  final double maxExtent;
+  final Widget child;
+
+  const _DateHeaderDelegate({
+    required this.minExtent,
+    required this.maxExtent,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(covariant _DateHeaderDelegate oldDelegate) {
+    return minExtent != oldDelegate.minExtent ||
+        maxExtent != oldDelegate.maxExtent ||
+        child != oldDelegate.child;
   }
 }

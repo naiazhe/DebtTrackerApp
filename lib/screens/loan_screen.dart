@@ -275,7 +275,7 @@ class _LoanScreenState extends State<LoanScreen> {
                   child: Text(
                     name,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -302,7 +302,7 @@ class _LoanScreenState extends State<LoanScreen> {
             // Loan Terms Section
             Text(
               _buildInterestDetails(loan),
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
+              style: const TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.w500),
             ),
           ],
         ),

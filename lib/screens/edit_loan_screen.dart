@@ -108,7 +108,9 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
         lastName: 'Borrower',
         contactNumber: '',
         address: '',
+        referenceName: '',
         referenceContact: '',
+        referenceRelationship: '',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
@@ -380,6 +382,12 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       }
     }
 
+    final updatedRemainingBalance = Loan.calculateRemainingBalance(
+      totalPayable: _totalPayable,
+      totalPaid: widget.loan.totalPaid,
+    );
+    final updatedStatus = updatedRemainingBalance <= 0 ? 'settled' : 'active';
+
     final updatedLoan = widget.loan.copyWith(
       borrowerId: _selectedBorrower!.borrowerId,
       loanAmount: loanAmount,
@@ -395,6 +403,9 @@ class _EditLoanScreenState extends State<EditLoanScreen> {
       collectUpfront: _collectUpfront,
       totalInterest: _totalInterest,
       totalPayable: _totalPayable,
+      totalPaid: widget.loan.totalPaid,
+      remainingBalance: updatedRemainingBalance,
+      status: updatedStatus,
       notes: _notesController.text.trim(),
       updatedAt: DateTime.now(),
     );

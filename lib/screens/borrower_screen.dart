@@ -196,7 +196,6 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
   Widget _buildBorrowerCard(Borrower borrower, List<Loan> borrowerLoans) {
     final name = _fullName(borrower);
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'B';
-    final status = _loanStatus(borrowerLoans);
     final totalDebt = borrowerLoans.fold<double>(0, (sum, loan) => sum + loan.remainingBalance);
 
     return InkWell(
@@ -238,57 +237,33 @@ class _BorrowerScreenState extends State<BorrowerScreen> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    borrowerLoans.isEmpty
+                        ? 'No Loan'
+                        : 'Total Debt: ₱ ${totalDebt.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Total Debt: ₱ ${totalDebt.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Loan Status: $status',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _statusColor(status),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _loanStatus(List<Loan> loans) {
-    if (loans.isEmpty) return 'No Loans';
-    final hasActive = loans.any((loan) => loan.status == 'active' && loan.remainingBalance > 0);
-    if (hasActive) return 'Active';
-    return 'Settled';
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Active':
-        return const Color(0xFF0E7A37);
-      case 'Settled':
-        return const Color(0xFF0070A8);
-      default:
-        return Colors.black54;
-    }
   }
 }

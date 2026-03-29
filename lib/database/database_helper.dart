@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -54,7 +54,9 @@ class DatabaseHelper {
         last_name TEXT NOT NULL,
         contact_number TEXT NOT NULL,
         address TEXT NOT NULL,
+        reference_name TEXT NOT NULL,
         reference_contact TEXT NOT NULL,
+        reference_relationship TEXT NOT NULL,
         status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -121,14 +123,30 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE loans ADD COLUMN interest_interval_unit TEXT');
     }
+
+    if (oldVersion < 3) {
+      await db.execute("ALTER TABLE borrowers ADD COLUMN reference_name TEXT NOT NULL DEFAULT ''");
+      await db.execute("ALTER TABLE borrowers ADD COLUMN reference_relationship TEXT NOT NULL DEFAULT ''");
+    }
   }
 
   Future<void> _ensureSchema(Database db) async {
-    final columns = await db.rawQuery('PRAGMA table_info(loans)');
-    final hasInterestIntervalUnit = columns.any((c) => c['name'] == 'interest_interval_unit');
+    final loanColumns = await db.rawQuery('PRAGMA table_info(loans)');
+    final hasInterestIntervalUnit = loanColumns.any((c) => c['name'] == 'interest_interval_unit');
 
     if (!hasInterestIntervalUnit) {
       await db.execute('ALTER TABLE loans ADD COLUMN interest_interval_unit TEXT');
+    }
+
+    final borrowerColumns = await db.rawQuery('PRAGMA table_info(borrowers)');
+    final hasReferenceName = borrowerColumns.any((c) => c['name'] == 'reference_name');
+    final hasReferenceRelationship = borrowerColumns.any((c) => c['name'] == 'reference_relationship');
+
+    if (!hasReferenceName) {
+      await db.execute("ALTER TABLE borrowers ADD COLUMN reference_name TEXT NOT NULL DEFAULT ''");
+    }
+    if (!hasReferenceRelationship) {
+      await db.execute("ALTER TABLE borrowers ADD COLUMN reference_relationship TEXT NOT NULL DEFAULT ''");
     }
   }
 

@@ -19,15 +19,29 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
   final _lastNameController = TextEditingController();
   final _contactController = TextEditingController();
   final _addressController = TextEditingController();
+  final _referenceNameController = TextEditingController();
   final _referenceController = TextEditingController();
 
   static const Color normalColor = Color(0xFF0070A8);
+  static const List<String> _referenceRelationshipOptions = [
+    'Parent',
+    'Sibling',
+    'Spouse / Partner',
+    'Guardian',
+    'Child',
+    'Friend',
+    'Relative',
+    'Colleague',
+  ];
 
   String? _firstNameError;
   String? _lastNameError;
   String? _contactError;
   String? _addressError;
+  String? _referenceNameError;
   String? _referenceError;
+  String? _referenceRelationshipError;
+  String? _selectedReferenceRelationship;
 
   @override
   void initState() {
@@ -36,7 +50,11 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
     _lastNameController.text = widget.borrower.lastName;
     _contactController.text = widget.borrower.contactNumber;
     _addressController.text = widget.borrower.address;
+    _referenceNameController.text = widget.borrower.referenceName;
     _referenceController.text = widget.borrower.referenceContact;
+    _selectedReferenceRelationship = widget.borrower.referenceRelationship.isNotEmpty
+      ? widget.borrower.referenceRelationship
+      : null;
   }
 
   @override
@@ -45,6 +63,7 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
     _lastNameController.dispose();
     _contactController.dispose();
     _addressController.dispose();
+    _referenceNameController.dispose();
     _referenceController.dispose();
     super.dispose();
   }
@@ -80,6 +99,32 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
       if (b.borrowerId == widget.borrower.borrowerId) return false;
       return _normalizePhoneNumber(b.contactNumber) == normalized;
     });
+  }
+
+  String? _validateReferenceName() {
+    final trimmed = _referenceNameController.text.trim();
+    if (trimmed.isEmpty) {
+      return 'Reference Name is required';
+    }
+
+    if (!RegExp(r"^[A-Za-z][A-Za-z .,'-]*$").hasMatch(trimmed)) {
+      return 'Reference Name must contain letters only';
+    }
+
+    final borrowerFullName = '${_firstNameController.text} ${_lastNameController.text}'
+        .trim()
+        .toLowerCase();
+    final borrowerFirstName = _firstNameController.text.trim().toLowerCase();
+    final borrowerLastName = _lastNameController.text.trim().toLowerCase();
+    final normalizedReferenceName = trimmed.toLowerCase();
+
+    if (normalizedReferenceName == borrowerFullName ||
+        normalizedReferenceName == borrowerFirstName ||
+        normalizedReferenceName == borrowerLastName) {
+      return 'Reference name must differ from borrower';
+    }
+
+    return null;
   }
 
   Future<void> _save(List<Borrower> existingBorrowers) async {
@@ -118,9 +163,26 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
       } else {
         _referenceError = null;
       }
+
+      _referenceNameError = _validateReferenceName();
+
+      final relationshipValue = _selectedReferenceRelationship;
+      if (relationshipValue == null || relationshipValue.isEmpty) {
+        _referenceRelationshipError = 'Relationship is required';
+      } else if (!_referenceRelationshipOptions.contains(relationshipValue)) {
+        _referenceRelationshipError = 'Invalid relationship selected';
+      } else {
+        _referenceRelationshipError = null;
+      }
     });
 
-    if (_firstNameError != null || _lastNameError != null || _contactError != null || _addressError != null || _referenceError != null) {
+    if (_firstNameError != null ||
+        _lastNameError != null ||
+        _contactError != null ||
+        _addressError != null ||
+        _referenceNameError != null ||
+        _referenceError != null ||
+        _referenceRelationshipError != null) {
       return;
     }
 
@@ -135,7 +197,9 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
         lastName: _lastNameController.text.trim(),
         contactNumber: _contactController.text.trim(),
         address: _addressController.text.trim(),
+        referenceName: _referenceNameController.text.trim(),
         referenceContact: _referenceController.text.trim(),
+        referenceRelationship: _selectedReferenceRelationship!,
         status: widget.borrower.status,
         createdAt: widget.borrower.createdAt,
         updatedAt: DateTime.now(),
@@ -227,9 +291,14 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
                         errorText: _firstNameError,
                       ),
                       onChanged: (_) {
-                        if (_firstNameError != null) {
-                          setState(() => _firstNameError = null);
-                        }
+                        setState(() {
+                          if (_firstNameError != null) {
+                            _firstNameError = null;
+                          }
+                          if (_referenceNameError != null) {
+                            _referenceNameError = _validateReferenceName();
+                          }
+                        });
                       },
                     ),
                   ),
@@ -273,9 +342,14 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
                         errorText: _lastNameError,
                       ),
                       onChanged: (_) {
-                        if (_lastNameError != null) {
-                          setState(() => _lastNameError = null);
-                        }
+                        setState(() {
+                          if (_lastNameError != null) {
+                            _lastNameError = null;
+                          }
+                          if (_referenceNameError != null) {
+                            _referenceNameError = _validateReferenceName();
+                          }
+                        });
                       },
                     ),
                   ),
@@ -411,6 +485,113 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
                       ],
                     ),
                     child: TextField(
+                      controller: _referenceNameController,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        labelText: 'Reference Name',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        prefixIcon: const Icon(Icons.badge, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _referenceNameError,
+                      ),
+                      onChanged: (_) {
+                        setState(() {
+                          _referenceNameError = _validateReferenceName();
+                        });
+                      },
+                    ),
+                  ),
+                  if (_referenceNameError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(_referenceNameError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _selectedReferenceRelationship,
+                      dropdownColor: Colors.white,
+                      decoration: InputDecoration(
+                        labelText: 'Relationship',
+                        labelStyle: const TextStyle(color: Color(0xFF0070A8)),
+                        prefixIcon: const Icon(Icons.diversity_3, color: Color(0xFF0070A8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        errorText: _referenceRelationshipError,
+                      ),
+                      items: _referenceRelationshipOptions
+                          .map(
+                            (relationship) => DropdownMenuItem<String>(
+                              value: relationship,
+                              child: Text(
+                                relationship,
+                                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedReferenceRelationship = value;
+                          _referenceRelationshipError = null;
+                        });
+                      },
+                    ),
+                  ),
+                  if (_referenceRelationshipError != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Text(
+                        _referenceRelationshipError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
                       controller: _referenceController,
                       keyboardType: TextInputType.phone,
                       style: const TextStyle(color: Colors.black),
@@ -501,6 +682,9 @@ class _EditBorrowerScreenState extends State<EditBorrowerScreen> {
           const SizedBox(height: 4),
           Text(
             error,
+            softWrap: true,
+            maxLines: 2,
+            overflow: TextOverflow.visible,
             style: const TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],

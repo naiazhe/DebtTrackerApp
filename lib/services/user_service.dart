@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
 
 class UserService extends ChangeNotifier {
+  static const String _userIdKey = 'saved_user_id';
+
   final DatabaseHelper _db = DatabaseHelper.instance;
 
   AppUser? currentUser;
@@ -17,12 +20,34 @@ class UserService extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    // App starts on login page until a user logs in.
-    currentUser = null;
-    _initialized = true;
+    // Try to load saved user session
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUserId = prefs.getInt(_userIdKey);
 
+      if (savedUserId != null) {
+        // Load user from database
+        currentUser = await _db.getUserById(savedUserId);
+      }
+    } catch (e) {
+      // If anything goes wrong, just proceed without a saved session
+      currentUser = null;
+    }
+
+    _initialized = true;
     isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _saveUserSession(AppUser user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (user.userId != null) {
+        await prefs.setInt(_userIdKey, user.userId!);
+      }
+    } catch (e) {
+      // If saving fails, don't break the login flow
+    }
   }
 
   Future<String?> login({required String username, required String password}) async {
@@ -53,6 +78,7 @@ class UserService extends ChangeNotifier {
     }
 
     currentUser = matchedByUsername;
+    await _saveUserSession(currentUser!);
     notifyListeners();
     return null;
   }
@@ -100,6 +126,7 @@ class UserService extends ChangeNotifier {
 
     final createdId = await _db.createUser(newUser);
     currentUser = await _db.getUserById(createdId);
+    await _saveUserSession(currentUser!);
 
     isLoading = false;
     notifyListeners();
@@ -153,8 +180,14 @@ class UserService extends ChangeNotifier {
     return null;
   }
 
-  void logout() {
+  Future<void> logout() async {
     currentUser = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userIdKey);
+    } catch (e) {
+      // If clearing fails, at least clear the in-memory user
+    }
     notifyListeners();
   }
 }
